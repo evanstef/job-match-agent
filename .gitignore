@@ -1,0 +1,24 @@
+# rahasia
+.env
+.env.local
+*.key
+
+# data mentah dari API pihak ketiga — dipakai lokal, jangan dipublikasikan
+data/*.json
+
+# python
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+
+# node / next
+node_modules/
+.next/
+out/
+.turbo/
+
+# lain-lain
+.DS_Store
+*.log

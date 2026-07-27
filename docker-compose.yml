@@ -1,0 +1,22 @@
+services:
+  db:
+    image: pgvector/pgvector:pg17
+    container_name: jobmatch-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: jobmatch
+      POSTGRES_PASSWORD: jobmatch
+      POSTGRES_DB: jobmatch
+    # 5433 di host biar tidak bentrok dengan Postgres lain yang sudah jalan
+    ports:
+      - "5433:5432"
+    volumes:
+      - jobmatch_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U jobmatch -d jobmatch"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  jobmatch_pgdata:

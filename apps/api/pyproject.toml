@@ -1,0 +1,56 @@
+[project]
+name = "job-match-api"
+version = "0.1.0"
+description = "Backend agent pencocok CV dengan lowongan kerja"
+requires-python = ">=3.12"
+
+dependencies = [
+    # web
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.34",
+    "python-multipart>=0.0.20",
+
+    # config & validasi
+    "pydantic>=2.10",
+    "pydantic-settings>=2.7",
+
+    # http client (dipakai ke Jooble & Telegram)
+    "httpx>=0.28",
+
+    # database
+    "sqlalchemy>=2.0",
+    "psycopg[binary]>=3.2",
+    "alembic>=1.14",
+    "pgvector>=0.3",
+
+    # auth
+    "pyjwt>=2.10",
+    "passlib[bcrypt]>=1.7",
+
+    # LLM
+    "groq>=0.15",
+
+    # baca CV pdf
+    "pypdf>=5.1",
+
+    # penjadwalan
+    "apscheduler>=3.11",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3",
+    "pytest-asyncio>=0.25",
+    "ruff>=0.9",
+]
+
+[tool.uv]
+package = false
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
