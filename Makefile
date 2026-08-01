@@ -1,5 +1,6 @@
 .DEFAULT_GOAL := help
-.PHONY: help setup install-api install-web api web db db-down db-logs test lint fmt
+.PHONY: help setup install-api install-web api web db db-down db-logs test lint fmt \
+	migrasi upgrade downgrade migrasi-history migrasi-current
 
 API_DIR := apps/api
 WEB_DIR := apps/web
@@ -40,3 +41,18 @@ lint: ## Cek gaya kode Python
 
 fmt: ## Rapikan kode Python
 	cd $(API_DIR) && uv run ruff format src tests
+
+migrasi: ## Bikin file migrasi baru dari perubahan models.py — pakai: make migrasi m="pesannya"
+	cd $(API_DIR) && uv run alembic revision --autogenerate -m "$(m)"
+
+upgrade: ## Jalankan migrasi yang belum dieksekusi ke database
+	cd $(API_DIR) && uv run alembic upgrade head
+
+downgrade: ## Mundur satu migrasi
+	cd $(API_DIR) && uv run alembic downgrade -1
+
+migrasi-history: ## Lihat semua migrasi yang pernah dibuat
+	cd $(API_DIR) && uv run alembic history
+
+migrasi-current: ## Lihat migrasi mana yang aktif di database sekarang
+	cd $(API_DIR) && uv run alembic current
