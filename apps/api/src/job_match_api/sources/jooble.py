@@ -1,7 +1,9 @@
-from pydantic import BaseModel
-from datetime import datetime
 import json
+from datetime import datetime
 from pathlib import Path
+
+from pydantic import BaseModel
+
 
 class JoobleJob(BaseModel):
     id: int
@@ -15,7 +17,7 @@ class JoobleJob(BaseModel):
     link: str
     updated: datetime | None = None
 
+
 def baca_dari_file(file_path: Path) -> list[JoobleJob]:
     data = json.loads(Path(file_path).read_text(encoding="utf-8"))
     return [JoobleJob(**job) for job in data["jobs"]]
-

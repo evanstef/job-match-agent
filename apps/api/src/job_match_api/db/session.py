@@ -1,8 +1,9 @@
-from sqlalchemy import create_engine
-from sqlalchemy.orm import Session, sessionmaker
-from job_match_api.config import settings
 from collections.abc import Generator
 
+from sqlalchemy import create_engine
+from sqlalchemy.orm import Session, sessionmaker
+
+from job_match_api.config import settings
 
 # bikin engine untuk connect ke database
 engine = create_engine(settings.database_url, pool_pre_ping=True)
