@@ -47,12 +47,19 @@ PESAN = {
     "datetime_parsing": "format tanggalnya tidak dikenali",
     "datetime_from_date_parsing": "format tanggalnya tidak dikenali",
     "url_parsing": "bukan URL yang valid",
-    "enum": "pilihannya tidak tersedia",
     "too_short": "jumlahnya terlalu sedikit",
     "too_long": "jumlahnya terlalu banyak",
-    "greater_than": "nilainya terlalu kecil",
-    "less_than": "nilainya terlalu besar",
     "value_error": "nilainya tidak valid",
+}
+
+# tipe error yang pesannya perlu menyebut angka/pilihan dari ctx
+PESAN_BERKONTEKS = {
+    "greater_than": lambda c: f"harus lebih dari {c['gt']}",
+    "greater_than_equal": lambda c: f"minimal {c['ge']}",
+    "less_than": lambda c: f"harus kurang dari {c['lt']}",
+    "less_than_equal": lambda c: f"maksimal {c['le']}",
+    "literal_error": lambda c: f"pilihannya hanya {c['expected']}",
+    "enum": lambda c: f"pilihannya hanya {c.get('expected', '')}".strip(),
 }
 
 
@@ -61,7 +68,15 @@ def _jadikan_kalimat(err: dict) -> str:
     # 'body'/'query'/'path' cuma penanda teknis, bukan nama field
     bagian = [str(x) for x in err.get("loc", ()) if x not in ("body", "query", "path")]
     field = " → ".join(bagian) or "data"
-    return f"'{field}' {PESAN.get(err.get('type', ''), err.get('msg', 'tidak valid'))}"
+    tipe = err.get("type", "")
+
+    if tipe in PESAN_BERKONTEKS:
+        try:
+            return f"'{field}' {PESAN_BERKONTEKS[tipe](err.get('ctx', {}))}"
+        except KeyError:
+            pass
+
+    return f"'{field}' {PESAN.get(tipe, err.get('msg', 'tidak valid'))}"
 
 
 def _buang_422_dari_dokumentasi(app: FastAPI) -> None:
