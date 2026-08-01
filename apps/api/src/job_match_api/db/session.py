@@ -1,8 +1,11 @@
+from collections.abc import Generator
+from typing import Annotated
+
+from fastapi import Depends
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
-from job_match_api.config import settings
-from collections.abc import Generator
 
+from job_match_api.config import settings
 
 # bikin engine untuk connect ke database
 engine = create_engine(settings.database_url, pool_pre_ping=True)
@@ -19,3 +22,7 @@ def get_db() -> Generator[Session, None, None]:
         yield db
     finally:
         db.close()
+
+
+# dipakai di signature endpoint: `db: DbSession` — tidak perlu tulis Depends() berulang
+DbSession = Annotated[Session, Depends(get_db)]

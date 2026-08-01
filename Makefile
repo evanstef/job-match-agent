@@ -39,8 +39,8 @@ test: ## Jalankan test Python
 lint: ## Cek gaya kode Python
 	cd $(API_DIR) && uv run ruff check src tests
 
-fmt: ## Rapikan kode Python
-	cd $(API_DIR) && uv run ruff format src tests
+fmt: ## Rapikan kode Python (format + urutan import)
+	cd $(API_DIR) && uv run ruff check --fix src tests && uv run ruff format src tests
 
 migrasi: ## Bikin file migrasi baru dari perubahan models.py — pakai: make migrasi m="pesannya"
 	cd $(API_DIR) && uv run alembic revision --autogenerate -m "$(m)"

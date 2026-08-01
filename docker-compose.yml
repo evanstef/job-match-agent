@@ -4,9 +4,9 @@ services:
     container_name: jobmatch-db
     restart: unless-stopped
     environment:
-      POSTGRES_USER: jobmatch
-      POSTGRES_PASSWORD: jobmatch
-      POSTGRES_DB: jobmatch
+      POSTGRES_USER: ${POSTGRES_USER:-jobmatch}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-jobmatch}
+      POSTGRES_DB: ${POSTGRES_DB:-jobmatch}
     # 5433 di host biar tidak bentrok dengan Postgres lain yang sudah jalan
     ports:
       - "5433:5432"
