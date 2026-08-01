@@ -1,0 +1,11 @@
+{
+  "python.defaultInterpreterPath": "${workspaceFolder}/apps/api/.venv/bin/python",
+  "python.terminal.activateEnvironment": true,
+  "python.analysis.extraPaths": [
+    "${workspaceFolder}/apps/api/src"
+  ],
+  "cursorpyright.analysis.extraPaths": [
+    "${workspaceFolder}/apps/api/src"
+  ],
+  "cursorpyright.analysis.autoSearchPaths": true
+}
