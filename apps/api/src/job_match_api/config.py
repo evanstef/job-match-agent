@@ -12,7 +12,7 @@ class Settings(BaseSettings):
 
     app_env: str = "development"
 
-    database_url: str = "postgresql+psycopg://jobmatch:jobmatch@localhost:5433/jobmatch"
+    database_url: str
 
     jooble_api_key: str = ""
     jooble_base_url: str = "https://id.jooble.org/api"
@@ -22,7 +22,7 @@ class Settings(BaseSettings):
 
     telegram_bot_token: str = ""
 
-    jwt_secret: str = "ganti-di-production"
+    jwt_secret: str
     jwt_algorithm: str = "HS256"
 
 
