@@ -1,3 +1,4 @@
+from sqlalchemy import func
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
@@ -21,6 +22,15 @@ def simpan_lowongan(db: Session, jobs: list[JoobleJob]) -> int:
 def simpan_cv(db: Session, user_id: int, teks: str, nama_file: str | None) -> Cv:
     cv = Cv(user_id=user_id, teks_mentah=teks, nama_file=nama_file)
     db.add(cv)
+    db.commit()
+    db.refresh(cv)
+    return cv
+
+
+# logic untuk simpan profil
+def simpan_profil(db: Session, cv: Cv, profil: dict) -> Cv:
+    cv.profil = profil
+    cv.profil_at = func.now()
     db.commit()
     db.refresh(cv)
     return cv
