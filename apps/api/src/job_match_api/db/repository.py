@@ -30,7 +30,7 @@ def simpan_cv(db: Session, user_id: int, teks: str, nama_file: str | None) -> Cv
 # logic untuk simpan profil
 def simpan_profil(db: Session, cv: Cv, profil: dict) -> Cv:
     cv.profil = profil
-    cv.profil_at = func.now()
+    cv.profil_at = func.clock_timestamp()
     db.commit()
     db.refresh(cv)
     return cv
