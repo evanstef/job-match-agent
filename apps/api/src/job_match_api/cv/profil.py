@@ -1,7 +1,13 @@
-from groq import APIError, Groq
-from pydantic import BaseModel, ValidationError
+from typing import Any, Literal
+
+from groq import Groq, GroqError
+from pydantic import BaseModel, Field, ValidationError, field_validator
 
 from job_match_api.config import settings
+
+MAKS_SKILL = 15
+# kuota Groq gratis dihitung per menit; biarkan SDK mundur-teratur sebelum menyerah
+MAKS_PERCOBAAN = 5
 
 INSTRUKSI = """Kamu pembaca CV. Baca teks CV lalu keluarkan JSON dengan bentuk persis ini:
 
@@ -27,9 +33,17 @@ class ProfilError(Exception):
 
 class ProfilCv(BaseModel):
     posisi: str
-    level: str
-    pengalaman_tahun: float
+    level: Literal["junior", "menengah", "senior"]
+    pengalaman_tahun: float = Field(ge=0, le=60)
     skill: list[str]
+
+    @field_validator("skill", mode="before")
+    @classmethod
+    def _buang_yang_bukan_teks(cls, v: Any) -> Any:
+        # satu angka nyasar dari LLM tidak boleh membatalkan seluruh profil
+        if isinstance(v, list):
+            return [s for s in v if isinstance(s, str) and s.strip()][:MAKS_SKILL]
+        return v
 
 
 def ekstrak_profil(teks: str) -> ProfilCv:
@@ -37,7 +51,7 @@ def ekstrak_profil(teks: str) -> ProfilCv:
     if not settings.groq_api_key:
         raise ProfilError("API key Groq tidak ditemukan")
 
-    client = Groq(api_key=settings.groq_api_key)
+    client = Groq(api_key=settings.groq_api_key, max_retries=MAKS_PERCOBAAN)
 
     try:
         respons = client.chat.completions.create(
@@ -49,10 +63,11 @@ def ekstrak_profil(teks: str) -> ProfilCv:
             response_format={"type": "json_object"},
             temperature=0,
         )
-    except APIError as e:
+        isi = respons.choices[0].message.content or ""
+    except GroqError as e:
         raise ProfilError(f"Gagal menghubungi Groq: {type(e).__name__}") from e
-
-    isi = respons.choices[0].message.content or ""
+    except (IndexError, AttributeError) as e:
+        raise ProfilError("Groq membalas tanpa isi") from e
 
     try:
         return ProfilCv.model_validate_json(isi)
