@@ -1,5 +1,6 @@
 import re
 from collections.abc import Iterable
+from typing import NamedTuple
 
 from job_match_api.cv.profil import ProfilCv
 from job_match_api.db.models import Lowongan
@@ -17,37 +18,63 @@ TINGKAT_JUDUL = {
     "entry level": 1,
     "senior": 3,
     "sr": 3,
-    "lead": 4,
-    "principal": 4,
-    "head of": 4,
-    "manager": 4,
-    "director": 4,
-    "chief": 4,
-    "vp": 4,
+    "lead": 3,
+    "leader": 3,
+    "principal": 3,
+    "head": 3,
+    "manager": 3,
+    "supervisor": 3,
+    "director": 5,
+    "chief": 5,
+    "vp": 5,
+    "president": 5,
 }
 
 JARAK_LEVEL_MAKS = 2
+PANJANG_KATA_MIN = 3
+MIN_SKILL_COCOK = 2
 
 
 def _tingkat_judul(judul: str) -> int | None:
     """Baca level dari judul lowongan. None kalau judulnya tidak menyebut level."""
     j = judul.lower()
     cocok = [t for kata, t in TINGKAT_JUDUL.items() if re.search(rf"\b{re.escape(kata)}\b", j)]
-    # "Senior Engineering Manager" dibaca sebagai manager, bukan senior
+    # "Senior Engineering Manager" diambil tingkat tertingginya
     return max(cocok) if cocok else None
 
 
-def _pola_bidang(profil: ProfilCv) -> re.Pattern[str]:
-    """Susun satu pola dari posisi + skill user untuk menandai lowongan sebidang."""
-    teks = " ".join([profil.posisi, *profil.skill]).lower()
-    kata = {k for k in re.findall(r"[a-z]+", teks) if len(k) > 2}
-    return re.compile(r"\b(" + "|".join(re.escape(k) for k in sorted(kata)) + r")\b")
+class PolaBidang(NamedTuple):
+    peran: re.Pattern[str] | None
+    skill: tuple[re.Pattern[str], ...]
+
+    def cocok(self, teks: str) -> bool:
+        # profil tidak menyisakan kata apa pun — aturan bidang dilewati, bukan meloloskan semua
+        if self.peran is None and not self.skill:
+            return True
+        if self.peran is not None and self.peran.search(teks):
+            return True
+        return sum(bool(p.search(teks)) for p in self.skill) >= MIN_SKILL_COCOK
+
+
+def _kata(teks: str) -> list[str]:
+    return [k for k in re.findall(r"[a-z]+", teks.lower()) if len(k) >= PANJANG_KATA_MIN]
+
+
+def _pola_bidang(profil: ProfilCv) -> PolaBidang:
+    """Kata peran diambil dari kata terakhir posisi. "Front End Web Developer" -> "developer".
+
+    Kata depannya ("front", "web") terlalu umum: bikin "Front Office Staff" ikut lolos.
+    """
+    kata_posisi = _kata(profil.posisi)
+    peran = re.compile(rf"\b{re.escape(kata_posisi[-1])}\b") if kata_posisi else None
+    skill = {k for s in profil.skill for k in _kata(s)}
+    return PolaBidang(peran, tuple(re.compile(rf"\b{re.escape(k)}\b") for k in sorted(skill)))
 
 
 def _alasan_buang(
     low: Lowongan,
     tingkat_user: int,
-    pola: re.Pattern[str],
+    pola: PolaBidang,
     sudah_dikirim: frozenset[int],
 ) -> str | None:
     if low.id in sudah_dikirim:
@@ -57,7 +84,7 @@ def _alasan_buang(
     if tingkat is not None and abs(tingkat - tingkat_user) >= JARAK_LEVEL_MAKS:
         return f"level judul terlalu jauh ({tingkat} vs {tingkat_user})"
 
-    if not pola.search(f"{low.title} {low.snippet or ''}".lower()):
+    if not pola.cocok(f"{low.title} {low.snippet or ''}".lower()):
         return "tidak ada jejak bidang di judul/snippet"
 
     return None
