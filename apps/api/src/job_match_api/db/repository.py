@@ -55,7 +55,8 @@ def ambil_lowongan_belum_dinilai(db: Session, user_id: int) -> list[Lowongan]:
         LowonganTerkirim.user_id == user_id,
         LowonganTerkirim.lowongan_id == Lowongan.id,
     )
-    stmt = select(Lowongan).where(~sudah.exists())
+    # terbaru dulu — kalau harus dipotong, yang tersisih yang paling basi, bukan yang acak
+    stmt = select(Lowongan).where(~sudah.exists()).order_by(Lowongan.updated.desc().nulls_last())
     return list(db.execute(stmt).scalars().all())
 
 
