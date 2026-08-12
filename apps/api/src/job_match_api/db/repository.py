@@ -1,6 +1,6 @@
 from collections.abc import Iterable
 
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
@@ -77,3 +77,21 @@ def catat_penilaian(db: Session, user_id: int, penilaian: Iterable[tuple[int, st
     hasil = db.execute(stmt).scalars().all()
     db.commit()
     return len(hasil)
+
+
+# ditandai setelah pesannya benar-benar terkirim, bukan saat dinilai
+def tandai_terkirim(db: Session, user_id: int, lowongan_ids: list[int]) -> int:
+    if not lowongan_ids:
+        return 0
+
+    stmt = (
+        update(LowonganTerkirim)
+        .where(
+            LowonganTerkirim.user_id == user_id,
+            LowonganTerkirim.lowongan_id.in_(lowongan_ids),
+        )
+        .values(dikirim=True)
+    )
+    hasil = db.execute(stmt)
+    db.commit()
+    return hasil.rowcount
