@@ -26,6 +26,9 @@ class Settings(BaseSettings):
     whatsapp_url: str = "http://localhost:3456"
     whatsapp_tujuan: str = ""
 
+    # mati secara default supaya menjalankan API di laptop tidak ikut mengirim pesan
+    penjadwal_aktif: bool = False
+
     jwt_secret: str
     jwt_algorithm: str = "HS256"
 
