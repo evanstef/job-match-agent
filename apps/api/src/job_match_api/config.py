@@ -22,6 +22,13 @@ class Settings(BaseSettings):
 
     telegram_bot_token: str = ""
 
+    # layanan whatsapp-web.js lokal (project mcp-whatsapp), bukan API resmi Meta
+    whatsapp_url: str = "http://localhost:3456"
+    whatsapp_tujuan: str = ""
+
+    # mati secara default supaya menjalankan API di laptop tidak ikut mengirim pesan
+    penjadwal_aktif: bool = False
+
     jwt_secret: str
     jwt_algorithm: str = "HS256"
 

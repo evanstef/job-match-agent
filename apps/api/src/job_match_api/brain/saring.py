@@ -53,7 +53,10 @@ class PolaBidang(NamedTuple):
             return True
         if self.peran is not None and self.peran.search(teks):
             return True
-        return sum(bool(p.search(teks)) for p in self.skill) >= MIN_SKILL_COCOK
+
+        # profil berskill 1 tidak akan pernah mencapai 2 — syaratnya diturunkan, bukan dibuat mustahil
+        butuh = min(MIN_SKILL_COCOK, len(self.skill))
+        return sum(bool(p.search(teks)) for p in self.skill) >= butuh
 
 
 def _kata(teks: str) -> list[str]:
