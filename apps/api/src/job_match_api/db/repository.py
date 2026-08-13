@@ -4,7 +4,7 @@ from sqlalchemy import func, select, update
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
-from job_match_api.db.models import Cv, Lowongan, LowonganTerkirim, User
+from job_match_api.db.models import Cv, Lowongan, LowonganTerkirim, Preferensi, User
 from job_match_api.sources.jooble import JoobleJob
 
 
@@ -18,6 +18,31 @@ def simpan_user(db: Session, email: str, password_hash: str) -> User:
     db.commit()
     db.refresh(user)
     return user
+
+
+# satu user satu baris preferensi: dibuat kalau belum ada, ditimpa kalau sudah
+def simpan_preferensi(
+    db: Session,
+    user_id: int,
+    lokasi: list[str],
+    bersedia_relokasi: bool,
+    mau_remote: bool,
+    whatsapp: str | None,
+) -> Preferensi:
+    pref = db.execute(select(Preferensi).where(Preferensi.user_id == user_id)).scalar_one_or_none()
+
+    if pref is None:
+        pref = Preferensi(user_id=user_id)
+        db.add(pref)
+
+    pref.lokasi = lokasi
+    pref.bersedia_relokasi = bersedia_relokasi
+    pref.mau_remote = mau_remote
+    pref.whatsapp = whatsapp
+
+    db.commit()
+    db.refresh(pref)
+    return pref
 
 
 def simpan_lowongan(db: Session, jobs: list[JoobleJob]) -> int:
