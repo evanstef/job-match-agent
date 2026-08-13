@@ -14,7 +14,7 @@ dependencies = [
     "pydantic>=2.10",
     "pydantic-settings>=2.7",
 
-    # http client (dipakai ke Jooble & Telegram)
+    # http client (dipakai ke Jooble & WhatsApp)
     "httpx>=0.28",
 
     # database
@@ -25,7 +25,7 @@ dependencies = [
 
     # auth
     "pyjwt>=2.10",
-    "passlib[bcrypt]>=1.7",
+    "bcrypt>=5.0",
 
     # LLM
     "groq>=0.15",
