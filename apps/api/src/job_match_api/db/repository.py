@@ -4,8 +4,20 @@ from sqlalchemy import func, select, update
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
-from job_match_api.db.models import Cv, Lowongan, LowonganTerkirim
+from job_match_api.db.models import Cv, Lowongan, LowonganTerkirim, User
 from job_match_api.sources.jooble import JoobleJob
+
+
+def cari_user_by_email(db: Session, email: str) -> User | None:
+    return db.execute(select(User).where(User.email == email)).scalar_one_or_none()
+
+
+def simpan_user(db: Session, email: str, password_hash: str) -> User:
+    user = User(email=email, password_hash=password_hash)
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+    return user
 
 
 def simpan_lowongan(db: Session, jobs: list[JoobleJob]) -> int:
