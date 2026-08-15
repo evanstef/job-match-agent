@@ -116,6 +116,50 @@ def catat_penilaian(db: Session, user_id: int, penilaian: Iterable[tuple[int, st
     return len(hasil)
 
 
+# lowongan yang isinya belum pernah diambil, dan sumbernya masih mungkin diambil
+def ambil_lowongan_tanpa_isi(db: Session, sumber: list[str], batas: int) -> list[Lowongan]:
+    stmt = (
+        select(Lowongan)
+        .where(
+            Lowongan.isi_lengkap.is_(None),
+            Lowongan.isi_lengkap_at.is_(None),
+            Lowongan.source.in_(sumber),
+            Lowongan.company.is_not(None),
+        )
+        .order_by(Lowongan.updated.desc().nulls_last())
+        .limit(batas)
+    )
+    return list(db.execute(stmt).scalars().all())
+
+
+def simpan_isi_lengkap(db: Session, isi: Iterable[tuple[int, str]]) -> int:
+    jumlah = 0
+    for lowongan_id, teks in isi:
+        stmt = (
+            update(Lowongan)
+            .where(Lowongan.id == lowongan_id)
+            .values(isi_lengkap=teks, isi_lengkap_at=func.clock_timestamp())
+        )
+        jumlah += db.execute(stmt).rowcount
+    db.commit()
+    return jumlah
+
+
+# menandai bahwa sudah dicoba dan gagal, supaya tidak dicoba terus tiap putaran
+def tandai_isi_gagal(db: Session, lowongan_ids: list[int]) -> int:
+    if not lowongan_ids:
+        return 0
+
+    stmt = (
+        update(Lowongan)
+        .where(Lowongan.id.in_(lowongan_ids))
+        .values(isi_lengkap_at=func.clock_timestamp())
+    )
+    hasil = db.execute(stmt)
+    db.commit()
+    return hasil.rowcount
+
+
 # ditandai setelah pesannya benar-benar terkirim, bukan saat dinilai
 def tandai_terkirim(db: Session, user_id: int, lowongan_ids: list[int]) -> int:
     if not lowongan_ids:
