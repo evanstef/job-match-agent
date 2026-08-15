@@ -12,6 +12,12 @@ def cari_user_by_email(db: Session, email: str) -> User | None:
     return db.execute(select(User).where(User.email == email)).scalar_one_or_none()
 
 
+# hanya user yang CV-nya sudah terbaca yang bisa dicarikan lowongan
+def ambil_user_siap(db: Session) -> list[User]:
+    stmt = select(User).join(Cv, Cv.user_id == User.id).where(Cv.profil.is_not(None)).distinct()
+    return list(db.execute(stmt).scalars().all())
+
+
 def simpan_user(db: Session, email: str, password_hash: str) -> User:
     user = User(email=email, password_hash=password_hash)
     db.add(user)
