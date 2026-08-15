@@ -35,7 +35,16 @@ def baca_dari_file(file_path: Path) -> list[JoobleJob]:
     return _dari_json(data)
 
 
-def search(keywords: str, location: str, result_on_page: int = 100) -> list[JoobleJob]:
+# di atas 100, Jooble diam-diam mengirim 30 — bukan error, bukan peringatan
+MAKS_PER_HALAMAN = 100
+
+
+def search(
+    keywords: str,
+    location: str,
+    result_on_page: int = MAKS_PER_HALAMAN,
+    halaman: int = 1,
+) -> list[JoobleJob]:
     # di cek dulu ada gak env api jooble nya
     if not settings.jooble_api_key:
         raise JoobleError("API key Jooble tidak ditemukan")
@@ -44,7 +53,8 @@ def search(keywords: str, location: str, result_on_page: int = 100) -> list[Joob
     body = {
         "keywords": keywords,
         "location": location,
-        "ResultOnPage": str(result_on_page),
+        "ResultOnPage": str(min(result_on_page, MAKS_PER_HALAMAN)),
+        "page": str(halaman),
     }
 
     try:
