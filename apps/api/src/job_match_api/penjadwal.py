@@ -2,11 +2,13 @@ import logging
 
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
-from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 from job_match_api.config import settings
-from job_match_api.db.models import Cv
+from job_match_api.db.repository import ambil_user_siap
 from job_match_api.db.session import SessionLocal
+from job_match_api.pengaya import lengkapi
+from job_match_api.pengumpul import tarik
 from job_match_api.putaran import jalankan_dan_kirim
 
 logger = logging.getLogger(__name__)
@@ -21,16 +23,46 @@ MAKS_DINILAI = 100
 _penjadwal = BackgroundScheduler(timezone=ZONA)
 
 
+def _isi_kolam(db: Session) -> None:
+    """Dua langkah yang mengisi bahan sebelum penilaian: tarik, lalu lengkapi isinya."""
+    try:
+        hasil = tarik(db)
+        logger.info(
+            "Tarik: %s permintaan, %s dibaca, %s baru (%s | %s)",
+            hasil.permintaan,
+            hasil.dibaca,
+            hasil.baru,
+            hasil.kata_kunci,
+            ", ".join(hasil.lokasi),
+        )
+    except Exception:
+        # penarikan gagal bukan alasan melewatkan penilaian — lowongan lama masih ada
+        logger.exception("Penarikan lowongan gagal")
+
+    try:
+        hasil = lengkapi(db)
+        logger.info(
+            "Lengkapi: %s diperiksa, %s berhasil, %s gagal",
+            hasil.diperiksa,
+            hasil.berhasil,
+            hasil.gagal,
+        )
+    except Exception:
+        # isi lengkap cuma pelengkap — tanpa itu penilaian tetap jalan dari cuplikan
+        logger.exception("Pelengkapan isi lowongan gagal")
+
+
 def _putaran_semua_user() -> None:
     db = SessionLocal()
     try:
-        stmt = select(Cv.user_id).where(Cv.profil.is_not(None)).distinct()
-        for user_id in db.execute(stmt).scalars().all():
+        _isi_kolam(db)
+
+        for pengguna in ambil_user_siap(db):
             try:
-                hasil = jalankan_dan_kirim(db, user_id, MAKS_DINILAI)
+                hasil = jalankan_dan_kirim(db, pengguna.id, MAKS_DINILAI)
                 logger.info(
                     "User %s: %s kandidat, %s dinilai, %s gagal, %s terkirim",
-                    user_id,
+                    pengguna.id,
                     hasil.kandidat,
                     hasil.dinilai,
                     hasil.gagal,
@@ -38,7 +70,7 @@ def _putaran_semua_user() -> None:
                 )
             except Exception:
                 # satu user bermasalah tidak boleh menghentikan putaran user lain
-                logger.exception("Putaran gagal untuk user %s", user_id)
+                logger.exception("Putaran gagal untuk user %s", pengguna.id)
     finally:
         db.close()
 

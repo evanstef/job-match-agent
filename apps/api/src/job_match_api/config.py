@@ -29,6 +29,14 @@ class Settings(BaseSettings):
     # mati secara default supaya menjalankan API di laptop tidak ikut mengirim pesan
     penjadwal_aktif: bool = False
 
+    # asal frontend yang boleh membawa cookie. Dipisah koma kalau lebih dari satu.
+    # WAJIB alamat spesifik — "*" ditolak browser kalau request-nya membawa kredensial
+    frontend_url: str = "http://localhost:3010"
+
+    @property
+    def daftar_frontend(self) -> list[str]:
+        return [a.strip() for a in self.frontend_url.split(",") if a.strip()]
+
     jwt_secret: str
     jwt_algorithm: str = "HS256"
 

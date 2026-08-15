@@ -72,6 +72,7 @@ class Preferensi(Base):
     keywords: Mapped[list[str]] = mapped_column(ARRAY(String(100)), default=list)
     bersedia_relokasi: Mapped[bool] = mapped_column(Boolean, default=False)
     mau_remote: Mapped[bool] = mapped_column(Boolean, default=False)
+    whatsapp: Mapped[str | None] = mapped_column(String(50))
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
