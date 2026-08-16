@@ -58,7 +58,16 @@ def _lokasi(user: User) -> list[str]:
 
 
 def _unik(nilai: list[str], batas: int) -> list[str]:
-    return list(dict.fromkeys(n.strip() for n in nilai if n.strip()))[:batas]
+    """Buang kembar tanpa mengacak urutan. Beda kapitalisasi dianggap sama —
+    preferensi diketik manual, jadi "Front End" dan "front end" sering berdampingan
+    dan kalau dibiarkan memakan dua jatah kata kunci untuk pencarian yang sama."""
+    hasil: dict[str, str] = {}
+    for n in nilai:
+        bersih = n.strip()
+        if bersih:
+            # kunci disamakan huruf kecil, tapi ejaan pertama yang disimpan
+            hasil.setdefault(bersih.lower(), bersih)
+    return list(hasil.values())[:batas]
 
 
 def tarik(db: Session, halaman: int = 1) -> HasilTarik:

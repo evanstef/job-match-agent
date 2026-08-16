@@ -13,9 +13,17 @@ def cari_user_by_email(db: Session, email: str) -> User | None:
     return db.execute(select(User).where(User.email == email)).scalar_one_or_none()
 
 
-# hanya user yang CV-nya sudah terbaca yang bisa dicarikan lowongan
+# hanya user yang CV-nya sudah terbaca yang bisa dicarikan lowongan.
+# urutannya dipatok: kata kunci & lokasi dipotong di MAKS_* waktu penarikan, jadi
+# tanpa ORDER BY siapa yang tersisih bisa berubah antar putaran tanpa sebab.
 def ambil_user_siap(db: Session) -> list[User]:
-    stmt = select(User).join(Cv, Cv.user_id == User.id).where(Cv.profil.is_not(None)).distinct()
+    stmt = (
+        select(User)
+        .join(Cv, Cv.user_id == User.id)
+        .where(Cv.profil.is_not(None))
+        .distinct()
+        .order_by(User.id)
+    )
     return list(db.execute(stmt).scalars().all())
 
 
