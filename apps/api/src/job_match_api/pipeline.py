@@ -7,12 +7,14 @@ from sqlalchemy.orm import Session
 from job_match_api.brain.otak import Hasil, OtakError, Preferensi, nilai
 from job_match_api.brain.saring import saring_kasar
 from job_match_api.cv.profil import ProfilCv
-from job_match_api.db.models import Lowongan, User
+from job_match_api.db.models import Cv, Lowongan, User
 from job_match_api.db.repository import (
     ambil_cv_terbaru,
     ambil_lowongan_belum_dinilai,
     catat_penilaian,
+    simpan_vektor_cv,
 )
+from job_match_api.vektor import VektorError, dari_profil
 
 logger = logging.getLogger(__name__)
 
@@ -56,6 +58,27 @@ def _preferensi(user: User) -> Preferensi:
     )
 
 
+def _vektor_cv(db: Session, cv: Cv) -> list[float] | None:
+    """Vektor CV untuk mengurutkan lowongan. Kesempatan kedua kalau belum ada.
+
+    Yang mengisinya sungguhan adalah jalur upload. Ini jaring di bawahnya: tanpa
+    ini, embedding yang gagal sekali waktu upload berarti user itu memakai urutan
+    cadangan selamanya, tanpa satu pun error muncul. Hasilnya disimpan supaya
+    kolom yang kosong itu benar-benar sembuh, bukan dihitung ulang tiap putaran.
+    """
+    if cv.embedding is not None:
+        return [float(x) for x in cv.embedding]
+
+    try:
+        vektor = dari_profil(cv.profil)
+    except VektorError as e:
+        logger.warning("Vektor CV %s gagal dihitung: %s", cv.id, e)
+        return None
+
+    simpan_vektor_cv(db, cv, vektor)
+    return vektor
+
+
 def _terpilih(low: Lowongan, hasil: Hasil) -> LowonganTerpilih:
     return LowonganTerpilih(
         id=low.id,
@@ -78,7 +101,7 @@ def jalankan(db: Session, user_id: int, maks_dinilai: int = 10) -> HasilJalan:
     profil = ProfilCv(**cv.profil)
     pref = _preferensi(cv.user)
 
-    lowongan = ambil_lowongan_belum_dinilai(db, user_id)
+    lowongan = ambil_lowongan_belum_dinilai(db, user_id, _vektor_cv(db, cv))
     kandidat = saring_kasar(profil, lowongan)
 
     # dinilai satu per satu, dijeda karena kuota Groq dihitung per menit

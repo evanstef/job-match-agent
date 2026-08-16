@@ -102,6 +102,13 @@ def simpan_profil(db: Session, cv: Cv, profil: dict, embedding: list[float] | No
     return cv
 
 
+def simpan_vektor_cv(db: Session, cv: Cv, vektor: list[float]) -> Cv:
+    cv.embedding = vektor
+    db.commit()
+    db.refresh(cv)
+    return cv
+
+
 # CV terakhir yang profilnya sudah jadi — yang gagal diproses LLM dilewati
 def ambil_cv_terbaru(db: Session, user_id: int) -> Cv | None:
     stmt = (
@@ -113,15 +120,21 @@ def ambil_cv_terbaru(db: Session, user_id: int) -> Cv | None:
     return db.execute(stmt).scalar_one_or_none()
 
 
-# lowongan yang belum pernah dinilai untuk user ini
-def ambil_lowongan_belum_dinilai(db: Session, user_id: int) -> list[Lowongan]:
+# lowongan yang belum pernah dinilai untuk user ini, terdekat dengan CV lebih dulu
+def ambil_lowongan_belum_dinilai(
+    db: Session, user_id: int, vektor_cv: list[float] | None = None
+) -> list[Lowongan]:
     sudah = select(LowonganTerkirim).where(
         LowonganTerkirim.user_id == user_id,
         LowonganTerkirim.lowongan_id == Lowongan.id,
     )
-    # terbaru dulu — kalau harus dipotong, yang tersisih yang paling basi, bukan yang acak
-    stmt = select(Lowongan).where(~sudah.exists()).order_by(Lowongan.updated.desc().nulls_last())
-    return list(db.execute(stmt).scalars().all())
+    stmt = select(Lowongan).where(~sudah.exists())
+
+    if vektor_cv is None:
+        return list(db.execute(stmt.order_by(Lowongan.id.desc())).scalars().all())
+
+    jarak = Lowongan.embedding.cosine_distance(vektor_cv)
+    return list(db.execute(stmt.order_by(jarak.nulls_last())).scalars().all())
 
 
 # catat hasil penilaian: (lowongan_id, verdict, skor)
