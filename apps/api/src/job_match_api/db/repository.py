@@ -187,6 +187,23 @@ def tandai_isi_gagal(db: Session, lowongan_ids: list[int]) -> int:
     return hasil.rowcount
 
 
+# lowongan yang vektornya belum dihitung.
+# urut id menaik: yang paling lama menunggu didahulukan. Kalau dibalik jadi terbaru
+# dulu, tumpukan lama tidak pernah kebagian selama tiap putaran ada lowongan baru.
+def ambil_lowongan_tanpa_vektor(db: Session, batas: int) -> list[Lowongan]:
+    stmt = select(Lowongan).where(Lowongan.embedding.is_(None)).order_by(Lowongan.id).limit(batas)
+    return list(db.execute(stmt).scalars().all())
+
+
+def simpan_vektor_lowongan(db: Session, vektor: Iterable[tuple[int, list[float]]]) -> int:
+    jumlah = 0
+    for lowongan_id, angka in vektor:
+        stmt = update(Lowongan).where(Lowongan.id == lowongan_id).values(embedding=angka)
+        jumlah += db.execute(stmt).rowcount
+    db.commit()
+    return jumlah
+
+
 # ditandai setelah pesannya benar-benar terkirim, bukan saat dinilai
 def tandai_terkirim(db: Session, user_id: int, lowongan_ids: list[int]) -> int:
     if not lowongan_ids:

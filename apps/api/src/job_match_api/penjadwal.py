@@ -8,6 +8,7 @@ from job_match_api.config import settings
 from job_match_api.db.repository import ambil_user_siap
 from job_match_api.db.session import SessionLocal
 from job_match_api.pengaya import lengkapi
+from job_match_api.pengisi import isi_vektor
 from job_match_api.pengumpul import tarik
 from job_match_api.putaran import jalankan_dan_kirim
 
@@ -28,7 +29,7 @@ _penjadwal = BackgroundScheduler(timezone=ZONA)
 
 
 def _isi_kolam(db: Session) -> None:
-    """Dua langkah yang mengisi bahan sebelum penilaian: tarik, lalu lengkapi isinya."""
+    """Tiga langkah pengisi bahan sebelum penilaian: tarik, hitung vektor, lengkapi isi."""
     try:
         hasil = tarik(db, halaman=HALAMAN)
         logger.info(
@@ -42,6 +43,17 @@ def _isi_kolam(db: Session) -> None:
     except Exception:
         # penarikan gagal bukan alasan melewatkan penilaian — lowongan lama masih ada
         logger.exception("Penarikan lowongan gagal")
+
+    try:
+        hasil = isi_vektor(db)
+        logger.info(
+            "Vektor: %s diperiksa, %s berhasil, %s gagal",
+            hasil.diperiksa,
+            hasil.berhasil,
+            hasil.gagal,
+        )
+    except Exception:
+        logger.exception("Pengisian vektor gagal")
 
     try:
         hasil = lengkapi(db)
