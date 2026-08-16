@@ -20,13 +20,17 @@ ZONA = "Asia/Jakarta"
 # cron menilai semua kandidat; pemotongan cuma rem darurat kalau jumlahnya meledak
 MAKS_DINILAI = 100
 
+# 100 lowongan per halaman; berapa banyak yang benar-benar tertarik dibatasi
+# MAKS_PERMINTAAN di pengumpul, bukan angka ini
+HALAMAN = 2
+
 _penjadwal = BackgroundScheduler(timezone=ZONA)
 
 
 def _isi_kolam(db: Session) -> None:
     """Dua langkah yang mengisi bahan sebelum penilaian: tarik, lalu lengkapi isinya."""
     try:
-        hasil = tarik(db)
+        hasil = tarik(db, halaman=HALAMAN)
         logger.info(
             "Tarik: %s permintaan, %s dibaca, %s baru (%s | %s)",
             hasil.permintaan,
