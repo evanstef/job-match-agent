@@ -1,4 +1,5 @@
 import logging
+import math
 from functools import lru_cache
 
 from fastembed import TextEmbedding
@@ -75,7 +76,15 @@ def dari_teks(teks: str) -> list[float]:
     except Exception as e:
         raise VektorError(f"Model embedding gagal: {type(e).__name__}: {e}") from e
 
-    return [float(x) for x in hasil]
+    # model ini mengeluarkan vektor sepanjang 2,9-4,1; panjangnya tidak menyimpan
+    # makna, cuma ikut terbawa. Disamakan jadi 1 supaya perkalian titik biasa pun
+    # memberi jawaban yang sama dengan kosinus — <=> sudah kebal, kode lain belum.
+    angka = [float(x) for x in hasil]
+    panjang = math.sqrt(sum(x * x for x in angka))
+    if panjang == 0:
+        raise VektorError("Model mengembalikan vektor nol")
+
+    return [x / panjang for x in angka]
 
 
 def dari_profil(profil: dict) -> list[float]:
