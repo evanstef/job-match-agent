@@ -5,6 +5,7 @@ from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
 from job_match_api.db.models import Cv, Lowongan, LowonganTerkirim, Preferensi, User
+from job_match_api.sources.jooble import PENARIK as PENARIK_JOOBLE
 from job_match_api.sources.jooble import JoobleJob
 
 
@@ -51,12 +52,22 @@ def simpan_preferensi(
     return pref
 
 
-def simpan_lowongan(db: Session, jobs: list[JoobleJob]) -> int:
+def simpan_lowongan(db: Session, jobs: list[JoobleJob], penarik: str = PENARIK_JOOBLE) -> int:
     if not jobs:
         return 0
 
-    stmt = insert(Lowongan).values([job.model_dump() for job in jobs])
-    stmt = stmt.on_conflict_do_nothing(index_elements=["id"]).returning(Lowongan.id)
+    baris = []
+    for job in jobs:
+        nilai = job.model_dump()
+        # id dari sumber turun jadi penanda asal; id baris sekarang dibuat sendiri
+        nilai["id_penarik"] = str(nilai.pop("id"))
+        nilai["penarik"] = penarik
+        baris.append(nilai)
+
+    stmt = insert(Lowongan).values(baris)
+    stmt = stmt.on_conflict_do_nothing(index_elements=["penarik", "id_penarik"]).returning(
+        Lowongan.id
+    )
 
     hasil = db.execute(stmt).scalars().all()
     db.commit()

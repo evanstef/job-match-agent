@@ -7,6 +7,10 @@ from pydantic import BaseModel
 
 from job_match_api.config import settings
 
+# nama penarik ini ikut tersimpan di tiap baris lowongan — jangan diubah
+# tanpa memindahkan baris lama, karena dipakai sebagai kunci anti-duplikat
+PENARIK = "jooble"
+
 
 class JoobleError(Exception):
     """Kesalahan yang muncul saat memproses data Jooble."""
