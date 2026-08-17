@@ -20,7 +20,16 @@ logger = logging.getLogger(__name__)
 
 PREFERENSI_DEFAULT = Preferensi(lokasi=["Jakarta", "Tangerang"], mau_remote=True)
 
-AMBANG_SKOR = 50
+# Lantai, bukan tebing. Diukur: satu lowongan yang sama dinilai lima kali menghasilkan
+# skor 45, 45, 45, 70, 70 — model membaca iklan yang sama sebagai 2 atau 3 syarat,
+# dan rumus skor membagi dengan jumlah itu, jadi goyangannya diperbesar.
+#
+# Dengan ambang 50, lowongan itu terkirim atau tidak tergantung nasib. Sekarang yang
+# menentukan urutannya, bukan satu garis: yang bagus tetap cenderung di atas yang
+# jelek meski angkanya bergeser. Lantai 20 hanya menahan sampah masuk waktu tidak
+# ada kandidat bagus sama sekali — jarak dari "bagus" ke bawah 20 lebih lebar
+# daripada goyangannya.
+AMBANG_SKOR = 20
 MAKS_KIRIM = 10
 JEDA_DETIK = 10
 
