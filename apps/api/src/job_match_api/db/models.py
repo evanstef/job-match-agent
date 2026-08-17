@@ -82,9 +82,13 @@ class Preferensi(Base):
 
 class Lowongan(Base):
     __tablename__ = "lowongan"
+    # NULL dianggap berbeda oleh Postgres, jadi baris tanpa id_penarik tidak saling
+    # menghalangi — sumber tanpa ID stabil harus disaring duplikatnya dengan cara lain.
+    __table_args__ = (UniqueConstraint("penarik", "id_penarik", name="uq_penarik_id"),)
 
-    # id dari Jooble: bigint, bisa negatif, 19 digit. Bukan punya kita.
-    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=False)
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    penarik: Mapped[str | None] = mapped_column(String(50), index=True)
+    id_penarik: Mapped[str | None] = mapped_column(String(255))
     title: Mapped[str] = mapped_column(String(500))
     company: Mapped[str | None] = mapped_column(String(255))
     location: Mapped[str | None] = mapped_column(String(255))

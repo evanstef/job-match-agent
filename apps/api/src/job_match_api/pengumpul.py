@@ -21,8 +21,9 @@ MAKS_KATA_KUNCI = 5
 MAKS_LOKASI = 3
 
 # rem kuota: kota x halaman tidak boleh melebihi ini dalam satu putaran.
-# 3 permintaan x 3 putaran x 30 hari = 270/bulan, dari batas Jooble 500.
-MAKS_PERMINTAAN = 3
+# 5 permintaan x 3 putaran x 30 hari = 450/bulan, dari batas Jooble 500.
+# Angka 6 (3 kota x 2 halaman) sengaja tidak dipakai — jadinya 540, lewat batas.
+MAKS_PERMINTAAN = 5
 
 LOKASI_DEFAULT = "Indonesia"
 
@@ -57,7 +58,16 @@ def _lokasi(user: User) -> list[str]:
 
 
 def _unik(nilai: list[str], batas: int) -> list[str]:
-    return list(dict.fromkeys(n.strip() for n in nilai if n.strip()))[:batas]
+    """Buang kembar tanpa mengacak urutan. Beda kapitalisasi dianggap sama —
+    preferensi diketik manual, jadi "Front End" dan "front end" sering berdampingan
+    dan kalau dibiarkan memakan dua jatah kata kunci untuk pencarian yang sama."""
+    hasil: dict[str, str] = {}
+    for n in nilai:
+        bersih = n.strip()
+        if bersih:
+            # kunci disamakan huruf kecil, tapi ejaan pertama yang disimpan
+            hasil.setdefault(bersih.lower(), bersih)
+    return list(hasil.values())[:batas]
 
 
 def tarik(db: Session, halaman: int = 1) -> HasilTarik:
@@ -71,23 +81,27 @@ def tarik(db: Session, halaman: int = 1) -> HasilTarik:
         logger.info("Tidak ada kata kunci — belum ada CV yang profilnya jadi")
         return HasilTarik(kata_kunci="", lokasi=lokasi, halaman=0, permintaan=0, dibaca=0, baru=0)
 
+    # halaman dulu, baru kota: setiap kota dijamin dapat halaman 1 sebelum ada
+    # kota yang dapat halaman 2. Kalau remnya menggigit, yang tersisih halaman
+    # terakhir kota terakhir — bukan satu kota hilang seluruhnya.
+    urutan = [(nomor, kota) for nomor in range(1, halaman + 1) for kota in lokasi]
+
     permintaan = dibaca = baru = 0
-    for kota in lokasi:
-        for nomor in range(1, halaman + 1):
-            if permintaan >= MAKS_PERMINTAAN:
-                logger.warning("Berhenti di %s permintaan — rem kuota", permintaan)
-                break
+    for nomor, kota in urutan:
+        if permintaan >= MAKS_PERMINTAAN:
+            logger.warning("Berhenti di %s permintaan — rem kuota", permintaan)
+            break
 
-            try:
-                jobs = search(kata_kunci, kota, halaman=nomor)
-            except JoobleError as e:
-                # kuota habis atau Jooble bermasalah — yang sudah masuk tetap dipakai
-                logger.warning("Penarikan %s halaman %s gagal: %s", kota, nomor, e)
-                break
+        try:
+            jobs = search(kata_kunci, kota, halaman=nomor)
+        except JoobleError as e:
+            # kuota habis atau Jooble bermasalah — yang sudah masuk tetap dipakai
+            logger.warning("Penarikan %s halaman %s gagal: %s", kota, nomor, e)
+            break
 
-            permintaan += 1
-            dibaca += len(jobs)
-            baru += simpan_lowongan(db, jobs)
+        permintaan += 1
+        dibaca += len(jobs)
+        baru += simpan_lowongan(db, jobs)
 
     return HasilTarik(
         kata_kunci=kata_kunci,

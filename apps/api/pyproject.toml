@@ -33,13 +33,15 @@ dependencies = [
     # baca CV pdf
     "pypdf>=5.1",
 
+    # embedding (ONNX, tanpa PyTorch) — dipakai penjadwal, bukan cuma alat ukur
+    "fastembed>=0.8",
+
     # penjadwalan
     "apscheduler>=3.11",
 ]
 
 [dependency-groups]
 dev = [
-    "fastembed>=0.8.0",
     "pytest>=8.3",
     "pytest-asyncio>=0.25",
     "ruff>=0.9",

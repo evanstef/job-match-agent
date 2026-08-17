@@ -10,6 +10,7 @@ from job_match_api.cv.pdf import PdfError, ekstrak_teks
 from job_match_api.cv.profil import ProfilCv, ProfilError, ekstrak_profil
 from job_match_api.db.repository import simpan_cv, simpan_profil
 from job_match_api.db.session import DbSession
+from job_match_api.vektor import VektorError, dari_profil
 
 logger = logging.getLogger(__name__)
 
@@ -53,7 +54,17 @@ def upload_cv(file: UploadFile, pengguna: PenggunaSekarang, db: DbSession) -> Up
     profil = None
     try:
         profil = ekstrak_profil(teks)
-        simpan_profil(db, cv, profil.model_dump())
+        isi = profil.model_dump()
+        # embedding boleh gagal sendiri tanpa menjatuhkan profil: profil dipakai
+        # OTAK untuk menilai, vektor cuma untuk mengurutkan. Yang kedua hilang
+        # masih bisa diisi susulan, yang pertama hilang berarti CV tidak terpakai.
+        vektor_profil = None
+        try:
+            vektor_profil = dari_profil(isi)
+        except VektorError as e:
+            logger.warning("Embedding CV %s gagal: %s", cv.id, e)
+
+        simpan_profil(db, cv, isi, vektor_profil)
     except (ProfilError, SQLAlchemyError) as e:
         db.rollback()
         profil = None
