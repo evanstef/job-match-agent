@@ -6,6 +6,9 @@
 # data mentah dari API pihak ketiga — dipakai lokal, jangan dipublikasikan
 data/*.json
 
+# model embedding fastembed, 241 MB — diunduh sendiri, jangan masuk repo
+.model-cache/
+
 # python
 .venv/
 __pycache__/

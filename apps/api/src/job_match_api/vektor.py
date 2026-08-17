@@ -4,6 +4,7 @@ from functools import lru_cache
 
 from fastembed import TextEmbedding
 
+from job_match_api.config import settings
 from job_match_api.teks import bersihkan
 
 logger = logging.getLogger(__name__)
@@ -27,8 +28,8 @@ class VektorError(Exception):
 @lru_cache(maxsize=1)
 def _model() -> TextEmbedding:
     """Muat sekali, dipakai seterusnya. Panggilan pertama ~1,7 detik."""
-    logger.info("Memuat model embedding %s", MODEL)
-    return TextEmbedding(model_name=MODEL)
+    logger.info("Memuat model embedding %s dari %s", MODEL, settings.model_cache_dir)
+    return TextEmbedding(model_name=MODEL, cache_dir=settings.model_cache_dir)
 
 
 def kalimat_profil(profil: dict) -> str:
