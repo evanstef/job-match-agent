@@ -17,7 +17,7 @@ class Settings(BaseSettings):
     jooble_api_key: str = ""
     jooble_base_url: str = "https://id.jooble.org/api"
     groq_api_key: str = ""
-    groq_model: str = "llama-3.3-70b-versatile"
+    groq_model: str = "openai/gpt-oss-120b"
     model_cache_dir: str = ".model-cache"
     telegram_bot_token: str = ""
     whatsapp_url: str = "http://localhost:3456"
