@@ -5,6 +5,7 @@ from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
 from job_match_api.db.models import Cv, Lowongan, LowonganTerkirim, Preferensi, User
+from job_match_api.sources.jooble import PENARIK as PENARIK_JOOBLE
 from job_match_api.sources.jooble import JoobleJob
 
 
@@ -12,9 +13,17 @@ def cari_user_by_email(db: Session, email: str) -> User | None:
     return db.execute(select(User).where(User.email == email)).scalar_one_or_none()
 
 
-# hanya user yang CV-nya sudah terbaca yang bisa dicarikan lowongan
+# hanya user yang CV-nya sudah terbaca yang bisa dicarikan lowongan.
+# urutannya dipatok: kata kunci & lokasi dipotong di MAKS_* waktu penarikan, jadi
+# tanpa ORDER BY siapa yang tersisih bisa berubah antar putaran tanpa sebab.
 def ambil_user_siap(db: Session) -> list[User]:
-    stmt = select(User).join(Cv, Cv.user_id == User.id).where(Cv.profil.is_not(None)).distinct()
+    stmt = (
+        select(User)
+        .join(Cv, Cv.user_id == User.id)
+        .where(Cv.profil.is_not(None))
+        .distinct()
+        .order_by(User.id)
+    )
     return list(db.execute(stmt).scalars().all())
 
 
@@ -51,12 +60,22 @@ def simpan_preferensi(
     return pref
 
 
-def simpan_lowongan(db: Session, jobs: list[JoobleJob]) -> int:
+def simpan_lowongan(db: Session, jobs: list[JoobleJob], penarik: str = PENARIK_JOOBLE) -> int:
     if not jobs:
         return 0
 
-    stmt = insert(Lowongan).values([job.model_dump() for job in jobs])
-    stmt = stmt.on_conflict_do_nothing(index_elements=["id"]).returning(Lowongan.id)
+    baris = []
+    for job in jobs:
+        nilai = job.model_dump()
+        # id dari sumber turun jadi penanda asal; id baris sekarang dibuat sendiri
+        nilai["id_penarik"] = str(nilai.pop("id"))
+        nilai["penarik"] = penarik
+        baris.append(nilai)
+
+    stmt = insert(Lowongan).values(baris)
+    stmt = stmt.on_conflict_do_nothing(index_elements=["penarik", "id_penarik"]).returning(
+        Lowongan.id
+    )
 
     hasil = db.execute(stmt).scalars().all()
     db.commit()
@@ -73,9 +92,18 @@ def simpan_cv(db: Session, user_id: int, teks: str, nama_file: str | None) -> Cv
 
 
 # logic untuk simpan profil
-def simpan_profil(db: Session, cv: Cv, profil: dict) -> Cv:
+def simpan_profil(db: Session, cv: Cv, profil: dict, embedding: list[float] | None = None) -> Cv:
     cv.profil = profil
     cv.profil_at = func.clock_timestamp()
+    if embedding is not None:
+        cv.embedding = embedding
+    db.commit()
+    db.refresh(cv)
+    return cv
+
+
+def simpan_vektor_cv(db: Session, cv: Cv, vektor: list[float]) -> Cv:
+    cv.embedding = vektor
     db.commit()
     db.refresh(cv)
     return cv
@@ -92,15 +120,21 @@ def ambil_cv_terbaru(db: Session, user_id: int) -> Cv | None:
     return db.execute(stmt).scalar_one_or_none()
 
 
-# lowongan yang belum pernah dinilai untuk user ini
-def ambil_lowongan_belum_dinilai(db: Session, user_id: int) -> list[Lowongan]:
+# lowongan yang belum pernah dinilai untuk user ini, terdekat dengan CV lebih dulu
+def ambil_lowongan_belum_dinilai(
+    db: Session, user_id: int, vektor_cv: list[float] | None = None
+) -> list[Lowongan]:
     sudah = select(LowonganTerkirim).where(
         LowonganTerkirim.user_id == user_id,
         LowonganTerkirim.lowongan_id == Lowongan.id,
     )
-    # terbaru dulu — kalau harus dipotong, yang tersisih yang paling basi, bukan yang acak
-    stmt = select(Lowongan).where(~sudah.exists()).order_by(Lowongan.updated.desc().nulls_last())
-    return list(db.execute(stmt).scalars().all())
+    stmt = select(Lowongan).where(~sudah.exists())
+
+    if vektor_cv is None:
+        return list(db.execute(stmt.order_by(Lowongan.id.desc())).scalars().all())
+
+    jarak = Lowongan.embedding.cosine_distance(vektor_cv)
+    return list(db.execute(stmt.order_by(jarak.nulls_last())).scalars().all())
 
 
 # catat hasil penilaian: (lowongan_id, verdict, skor)
@@ -164,6 +198,23 @@ def tandai_isi_gagal(db: Session, lowongan_ids: list[int]) -> int:
     hasil = db.execute(stmt)
     db.commit()
     return hasil.rowcount
+
+
+# lowongan yang vektornya belum dihitung.
+# urut id menaik: yang paling lama menunggu didahulukan. Kalau dibalik jadi terbaru
+# dulu, tumpukan lama tidak pernah kebagian selama tiap putaran ada lowongan baru.
+def ambil_lowongan_tanpa_vektor(db: Session, batas: int) -> list[Lowongan]:
+    stmt = select(Lowongan).where(Lowongan.embedding.is_(None)).order_by(Lowongan.id).limit(batas)
+    return list(db.execute(stmt).scalars().all())
+
+
+def simpan_vektor_lowongan(db: Session, vektor: Iterable[tuple[int, list[float]]]) -> int:
+    jumlah = 0
+    for lowongan_id, angka in vektor:
+        stmt = update(Lowongan).where(Lowongan.id == lowongan_id).values(embedding=angka)
+        jumlah += db.execute(stmt).rowcount
+    db.commit()
+    return jumlah
 
 
 # ditandai setelah pesannya benar-benar terkirim, bukan saat dinilai
