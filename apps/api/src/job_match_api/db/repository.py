@@ -82,21 +82,37 @@ def simpan_lowongan(db: Session, jobs: list[JoobleJob], penarik: str = PENARIK_J
     return len(hasil)
 
 
-# logic simpan cv
-def simpan_cv(db: Session, user_id: int, teks: str, nama_file: str | None) -> Cv:
-    cv = Cv(user_id=user_id, teks_mentah=teks, nama_file=nama_file)
-    db.add(cv)
-    db.commit()
-    db.refresh(cv)
-    return cv
+# Satu user satu baris CV: yang lama ditimpa, bukan ditumpuk.
+#
+# Dipanggil HANYA setelah profil berhasil dibaca. Dulu CV disimpan lebih dulu lalu
+# profilnya menyusul, dengan alasan "bisa diproses ulang nanti" — tapi tidak ada
+# satu pun kode yang mencari CV tanpa profil, dan ambil_cv_terbaru justru
+# menyaringnya. Jadi baris seperti itu tidak pernah terpakai, cuma menumpuk.
+def simpan_cv_lengkap(
+    db: Session,
+    user_id: int,
+    teks: str,
+    nama_file: str | None,
+    profil: dict,
+    embedding: list[float] | None = None,
+) -> Cv:
+    cv = db.execute(
+        select(Cv).where(Cv.user_id == user_id).order_by(Cv.id.desc()).limit(1)
+    ).scalar_one_or_none()
 
+    if cv is None:
+        cv = Cv(user_id=user_id)
+        db.add(cv)
 
-# logic untuk simpan profil
-def simpan_profil(db: Session, cv: Cv, profil: dict, embedding: list[float] | None = None) -> Cv:
+    cv.teks_mentah = teks
+    cv.nama_file = nama_file
     cv.profil = profil
     cv.profil_at = func.clock_timestamp()
-    if embedding is not None:
-        cv.embedding = embedding
+    # None di sini berarti "kosongkan", bukan "jangan diubah": profilnya berganti,
+    # jadi vektor lama sudah tidak mewakili apa-apa dan lebih baik hilang.
+    # pipeline._vektor_cv yang akan menghitungnya lagi di putaran berikutnya.
+    cv.embedding = embedding
+
     db.commit()
     db.refresh(cv)
     return cv

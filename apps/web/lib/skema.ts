@@ -53,10 +53,18 @@ export const skemaProfilCv = z.object({
   skill: z.array(z.string()),
 });
 
-export const skemaUploadCv = z.object({
+/** Balasan /cv/baca — hasil bacaan LLM, belum tersimpan di mana pun. */
+export const skemaBacaCv = z.object({
+  nama_file: z.string(),
+  teks: z.string(),
+  profil: skemaProfilCv,
+});
+
+/** Balasan /cv/simpan — sudah masuk database. */
+export const skemaSimpanCv = z.object({
   id_cv: z.number(),
   panjang_teks: z.number(),
-  profil: skemaProfilCv.nullable(),
+  profil: skemaProfilCv,
 });
 
 export const skemaPreferensiKeluar = z.object({
@@ -86,7 +94,8 @@ export const skemaHasilJalan = z.object({
 
 export type SayaOut = z.infer<typeof skemaSaya>;
 export type ProfilCv = z.infer<typeof skemaProfilCv>;
-export type UploadCvOut = z.infer<typeof skemaUploadCv>;
+export type BacaCvOut = z.infer<typeof skemaBacaCv>;
+export type SimpanCvOut = z.infer<typeof skemaSimpanCv>;
 export type Preferensi = z.infer<typeof skemaPreferensiKeluar>;
 export type LowonganTerpilih = z.infer<typeof skemaLowonganTerpilih>;
 export type HasilJalan = z.infer<typeof skemaHasilJalan>;

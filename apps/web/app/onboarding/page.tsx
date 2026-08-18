@@ -12,8 +12,9 @@ import {
   skemaPreferensi,
   skemaPreferensiKeluar,
   periksaKolom,
-  skemaUploadCv,
-  type ProfilCv,
+  skemaBacaCv,
+  skemaSimpanCv,
+  type BacaCvOut,
 } from "@/lib/skema";
 
 const KOLOM =
@@ -25,7 +26,8 @@ const SALAH = "border-red-400 focus:border-red-500 focus:ring-red-500/10";
 export default function Onboarding() {
   const router = useRouter();
   const [siap, setSiap] = useState(false);
-  const [profil, setProfil] = useState<ProfilCv | null>(null);
+  const [bacaan, setBacaan] = useState<BacaCvOut | null>(null);
+  const profil = bacaan?.profil ?? null;
   const [membaca, setMembaca] = useState(false);
   const [sibuk, setSibuk] = useState(false);
 
@@ -46,6 +48,8 @@ export default function Onboarding() {
       .catch(() => router.replace("/masuk"));
   }, [router]);
 
+  // hanya membaca — belum menyimpan apa pun. Ganti berkas berkali-kali tidak
+  // meninggalkan satu baris pun di database; penyimpanan terjadi saat submit.
   async function unggah(e: React.ChangeEvent<HTMLInputElement>) {
     const berkas = e.target.files?.[0];
     if (!berkas) return;
@@ -55,26 +59,26 @@ export default function Onboarding() {
     badan.append("file", berkas);
 
     try {
-      const data = await minta(skemaUploadCv, () => api.post("/cv/upload", badan));
-      setProfil(data.profil);
-      if (data.profil) {
-        toast.success("CV terbaca", {
-          description: `${data.profil.posisi} · ${data.profil.skill.length} skill`,
-        });
-      } else {
-        toast.warning("CV tersimpan, tapi profilnya gagal dibaca", {
-          description: "Coba unggah lagi sebentar lagi.",
-        });
-      }
+      const data = await minta(skemaBacaCv, () => api.post("/cv/baca", badan));
+      setBacaan(data);
+      toast.success("CV terbaca", {
+        description: `${data.profil.posisi} · ${data.profil.skill.length} skill`,
+      });
     } catch (err) {
       toast.error(pesanError(err));
     } finally {
       setMembaca(false);
+      // input file tidak memicu onChange kalau nilainya sama; tanpa ini, memilih
+      // berkas yang sama setelah gagal terlihat seperti aplikasinya menggantung
+      e.target.value = "";
     }
   }
 
-  async function simpanPreferensi(e: React.FormEvent) {
+  // satu tombol menyimpan dua-duanya. CV disimpan lebih dulu: kalau dia gagal,
+  // preferensi tidak ikut tersimpan dan tidak ada yang setengah jadi.
+  async function simpanSemua(e: React.FormEvent) {
     e.preventDefault();
+    if (!bacaan) return;
 
     const hasil = skemaPreferensi.safeParse({
       lokasi: kota
@@ -93,6 +97,7 @@ export default function Onboarding() {
     setSalah({});
     setSibuk(true);
     try {
+      await minta(skemaSimpanCv, () => api.post("/cv/simpan", bacaan));
       await minta(skemaPreferensiKeluar, () => api.post("/preferensi", hasil.data));
       toast.success("Agent siap jalan");
       router.push("/beranda");
@@ -174,7 +179,7 @@ export default function Onboarding() {
                 className="mt-4 rounded-xl border border-zinc-200/70 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-900"
               >
                 <p className="text-sm font-light text-zinc-500">
-                  Yang kami baca dari CV-mu
+                  Yang kami baca dari CV-mu — belum tersimpan
                 </p>
                 <p className="mt-2 text-lg font-medium">{profil.posisi}</p>
                 <p className="text-sm font-light text-zinc-600 dark:text-zinc-400">
@@ -198,7 +203,7 @@ export default function Onboarding() {
           </AnimatePresence>
         </motion.section>
 
-        <motion.form variants={naik} onSubmit={simpanPreferensi} noValidate className="mt-10">
+        <motion.form variants={naik} onSubmit={simpanSemua} noValidate className="mt-10">
           <div className="flex items-center gap-2.5">
             <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-zinc-900 text-sm font-semibold text-white dark:bg-zinc-100 dark:text-zinc-900">
               2
