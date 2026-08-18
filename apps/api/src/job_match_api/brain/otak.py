@@ -271,11 +271,16 @@ def nilai(
     except ValidationError as e:
         raise OtakError(f"Jawaban LLM tidak sesuai bentuk: {e.error_count()} kesalahan") from e
 
-    # vonis lokasi ditimpa kode — lihat _vonis_lokasi untuk alasannya.
+    # Dua dimensi vonisnya ditimpa kode, tidak dipercayakan ke model.
+    # lokasi: lihat _vonis_lokasi untuk alasannya.
+    # kesediaan (lembur, shift, ditempatkan di klien, status kontrak): pengguna
     for s in jawaban.syarat:
         if s.dimensi == "lokasi":
             s.vonis = _vonis_lokasi(pref, low, iklan)
             s.bukti = f"Preferensi: {', '.join(pref.lokasi)}" if s.vonis == "cocok" else None
+        elif s.dimensi == "kesediaan":
+            s.vonis = "tidak kebaca"
+            s.bukti = None
 
     return Hasil(
         vonis=_vonis_akhir(jawaban.syarat),
