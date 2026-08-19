@@ -5,23 +5,28 @@ from pydantic import BaseModel, Field, ValidationError, field_validator
 
 from job_match_api.config import settings
 
-MAKS_SKILL = 15
+MAKS_SKILL = 25
 # kuota Groq gratis dihitung per menit; biarkan SDK mundur-teratur sebelum menyerah
 MAKS_PERCOBAAN = 5
 
 INSTRUKSI = """Kamu pembaca CV. Baca teks CV lalu keluarkan JSON dengan bentuk persis ini:
 
   {
-    "posisi": "jabatan yang paling sering/terakhir dikerjakan, contoh: Frontend Developer",
+    "posisi": "jabatan yang DITUJU pelamar, contoh: Frontend Developer",
     "level": "junior | menengah | senior",
     "pengalaman_tahun": 2.5,
     "skill": ["React", "TypeScript"]
   }
 
   Aturan:
+  - posisi: ambil dari judul/headline di kepala CV — itu jabatan yang dituju pelamar.
+    Riwayat kerja hanya bukti pengalaman, BUKAN tujuannya. Orang yang beralih karier
+    punya jabatan lama yang tidak lagi dia cari. Kalau CV tidak punya headline sama
+    sekali, baru pakai jabatan terakhir yang dikerjakan.
   - level: <2 tahun = junior, 2-5 tahun = menengah, >5 tahun = senior
   - pengalaman_tahun: angka, boleh desimal. Hitung dari tanggal kerja, bukan dari klaim di ringkasan
-  - skill: maksimal 15, tulis nama teknologinya saja
+  - skill: tulis nama teknologinya saja, sebanyak yang benar-benar tertulis di CV.
+    Berhenti kalau sudah habis — 25 itu batas atas, bukan target yang harus dipenuhi.
   - Jangan mengarang. Kalau tidak ada di teks, jangan ditulis
 
   Balas JSON saja, tanpa penjelasan."""
