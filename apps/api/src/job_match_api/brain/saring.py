@@ -1,6 +1,5 @@
 import re
 from collections.abc import Iterable
-from typing import NamedTuple
 
 from job_match_api.cv.profil import ProfilCv
 from job_match_api.db.models import Lowongan
@@ -31,8 +30,6 @@ TINGKAT_JUDUL = {
 }
 
 JARAK_LEVEL_MAKS = 2
-PANJANG_KATA_MIN = 3
-MIN_SKILL_COCOK = 2
 
 
 def _tingkat_judul(judul: str) -> int | None:
@@ -43,41 +40,9 @@ def _tingkat_judul(judul: str) -> int | None:
     return max(cocok) if cocok else None
 
 
-class PolaBidang(NamedTuple):
-    peran: re.Pattern[str] | None
-    skill: tuple[re.Pattern[str], ...]
-
-    def cocok(self, teks: str) -> bool:
-        # profil tidak menyisakan kata apa pun — aturan bidang dilewati, bukan meloloskan semua
-        if self.peran is None and not self.skill:
-            return True
-        if self.peran is not None and self.peran.search(teks):
-            return True
-
-        # profil berskill 1 tidak akan pernah mencapai 2 — syaratnya diturunkan, bukan dibuat mustahil
-        butuh = min(MIN_SKILL_COCOK, len(self.skill))
-        return sum(bool(p.search(teks)) for p in self.skill) >= butuh
-
-
-def _kata(teks: str) -> list[str]:
-    return [k for k in re.findall(r"[a-z]+", teks.lower()) if len(k) >= PANJANG_KATA_MIN]
-
-
-def _pola_bidang(profil: ProfilCv) -> PolaBidang:
-    """Kata peran diambil dari kata terakhir posisi. "Front End Web Developer" -> "developer".
-
-    Kata depannya ("front", "web") terlalu umum: bikin "Front Office Staff" ikut lolos.
-    """
-    kata_posisi = _kata(profil.posisi)
-    peran = re.compile(rf"\b{re.escape(kata_posisi[-1])}\b") if kata_posisi else None
-    skill = {k for s in profil.skill for k in _kata(s)}
-    return PolaBidang(peran, tuple(re.compile(rf"\b{re.escape(k)}\b") for k in sorted(skill)))
-
-
 def _alasan_buang(
     low: Lowongan,
     tingkat_user: int,
-    pola: PolaBidang,
     sudah_dikirim: frozenset[int],
 ) -> str | None:
     if low.id in sudah_dikirim:
@@ -87,9 +52,6 @@ def _alasan_buang(
     if tingkat is not None and abs(tingkat - tingkat_user) >= JARAK_LEVEL_MAKS:
         return f"level judul terlalu jauh ({tingkat} vs {tingkat_user})"
 
-    if not pola.cocok(f"{low.title} {low.snippet or ''}".lower()):
-        return "tidak ada jejak bidang di judul/snippet"
-
     return None
 
 
@@ -98,9 +60,11 @@ def saring_kasar(
     lowongan: Iterable[Lowongan],
     sudah_dikirim: frozenset[int] = frozenset(),
 ) -> list[Lowongan]:
-    """Buang lowongan yang jelas tidak mungkin, tanpa LLM. Yang menilai tetap OTAK."""
+    """Buang lowongan yang jelas tidak mungkin, tanpa LLM. Yang menilai tetap OTAK.
+
+    Kecocokan bidang tidak diperiksa di sini: itu tugas jarak vektor di
+    ambil_lowongan_belum_dinilai. Diukur 2026-08-19, aturan kata lama meloloskan
+    10 dari 263 dan 9 di antaranya justru peringkat 50-218 dari kedekatan ke CV.
+    """
     tingkat_user = TINGKAT_PROFIL.get(profil.level.lower(), 2)
-    pola = _pola_bidang(profil)
-    return [
-        low for low in lowongan if _alasan_buang(low, tingkat_user, pola, sudah_dikirim) is None
-    ]
+    return [low for low in lowongan if _alasan_buang(low, tingkat_user, sudah_dikirim) is None]

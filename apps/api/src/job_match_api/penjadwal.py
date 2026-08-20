@@ -18,8 +18,9 @@ logger = logging.getLogger(__name__)
 JAM = "8,15,21"
 ZONA = "Asia/Jakarta"
 
-# cron menilai semua kandidat; pemotongan cuma rem darurat kalau jumlahnya meledak
-MAKS_DINILAI = 100
+# Dipatok kuota, bukan selera: Groq gratis 200.000 token/hari, satu penilaian ~2.000.
+# 20 x 3 putaran = 120.000, masih muat. Yang kepotong adalah yang paling jauh dari CV.
+MAKS_DINILAI = 20
 
 # 100 lowongan per halaman; berapa banyak yang benar-benar tertarik dibatasi
 # MAKS_PERMINTAAN di pengumpul, bukan angka ini

@@ -8,6 +8,11 @@ from job_match_api.db.models import Cv, Lowongan, LowonganTerkirim, Preferensi, 
 from job_match_api.sources.jooble import PENARIK as PENARIK_JOOBLE
 from job_match_api.sources.jooble import JoobleJob
 
+# Batas jarak kosinus CV -> lowongan. Menggantikan aturan cocok-cocokan kata yang
+# dulu ada di saring_kasar. Diukur 2026-08-19: di bawah 0,60 masih bidang teknis,
+# di atasnya mulai Operations/Sales/HR Manager.
+JARAK_MAKS = 0.60
+
 
 def cari_user_by_email(db: Session, email: str) -> User | None:
     return db.execute(select(User).where(User.email == email)).scalar_one_or_none()
@@ -150,7 +155,8 @@ def ambil_lowongan_belum_dinilai(
         return list(db.execute(stmt.order_by(Lowongan.id.desc())).scalars().all())
 
     jarak = Lowongan.embedding.cosine_distance(vektor_cv)
-    return list(db.execute(stmt.order_by(jarak.nulls_last())).scalars().all())
+    stmt = stmt.where(jarak < JARAK_MAKS).order_by(jarak)
+    return list(db.execute(stmt).scalars().all())
 
 
 # catat hasil penilaian: (lowongan_id, verdict, skor)
