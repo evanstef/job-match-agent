@@ -20,10 +20,10 @@ logger = logging.getLogger(__name__)
 
 PREFERENSI_DEFAULT = Preferensi(lokasi=["Jakarta", "Tangerang"], mau_remote=True)
 
-# Diukur 2026-08-19 atas 10 kandidat pintu baru: yang perannya cocok dapat 52-56,
-# yang tidak cocok paling tinggi 44. 45 jatuh di jurang itu, dan 44 & 52 memang dua
-# nilai bersebelahan dari 20 skor yang mungkin keluar — bukan angka karangan.
-AMBANG_SKOR = 45
+# Lantai, bukan tebing. Satu lowongan yang sama dinilai 5x menghasilkan 45/45/45/70/70
+# (17 Agu) dan 36/76/36/56/56 (19 Agu) — ambang di dalam pita itu jadi undian.
+# Yang menyeleksi urutan skor + MAKS_KIRIM; lantai cuma menahan waktu tak ada yang bagus.
+AMBANG_SKOR = 35
 MAKS_KIRIM = 10
 JEDA_DETIK = 10
 
