@@ -32,8 +32,7 @@ dengan bentuk persis ini:
     {"dimensi": "pendidikan", "teks": "...", "vonis": "...", "bukti": "..."},
     {"dimensi": "lokasi", "teks": "...", "vonis": "...", "bukti": "..."},
     {"dimensi": "kesediaan", "teks": "...", "vonis": "...", "bukti": "..."}
-  ],
-  "ringkasan": "satu kalimat, kenapa lowongan ini layak atau tidak"
+  ]
 }
 
 Enam dimensi itu, dan apa yang ditanyakan masing-masing:
@@ -126,7 +125,6 @@ class Hasil(BaseModel):
 
 class _JawabanLLM(BaseModel):
     syarat: list[Syarat]
-    ringkasan: str
 
     @model_validator(mode="after")
     def _enam_kotak(self) -> "_JawabanLLM":
@@ -182,6 +180,38 @@ def _skor(syarat: list[Syarat]) -> int:
     )
     # skor 0 disediakan khusus untuk SKIP — keras bersyarat tidak pernah menutup pintu
     return max(1, round(dasar - potongan))
+
+
+DIMENSI_DIRINGKAS = ("peran", "keterampilan", "senioritas", "pendidikan", "lokasi")
+
+
+def _gabung(kata: list[str]) -> str:
+    if len(kata) == 1:
+        return kata[0]
+    return f"{', '.join(kata[:-1])} dan {kata[-1]}"
+
+
+def _ringkasan(syarat: list[Syarat]) -> str:
+    """Disusun kode dari syarat yang sudah ditimpa, bukan dikarang LLM.
+
+    Ringkasan karangan LLM pernah bilang "tidak layak" untuk lowongan bervonis
+    PERTIMBANGKAN, dan menyebut lokasi yang vonisnya sudah diganti _vonis_lokasi.
+    """
+    kelompok: dict[str, list[str]] = {"cocok": [], "tidak cocok": [], "tidak kebaca": []}
+    for s in syarat:
+        if s.dimensi in DIMENSI_DIRINGKAS:
+            kelompok[s.vonis].append(s.dimensi)
+
+    bagian = [
+        f"{_gabung(kelompok[v]).capitalize()} {akhiran}"
+        for v, akhiran in (
+            ("cocok", "cocok"),
+            ("tidak cocok", "tidak cocok"),
+            ("tidak kebaca", "tidak disebut di iklan"),
+        )
+        if kelompok[v]
+    ]
+    return ". ".join(bagian) + "." if bagian else "Tidak ada syarat yang terbaca."
 
 
 def _ada_iklan_penuh(iklan: str | None) -> bool:
@@ -285,7 +315,7 @@ def nilai(
     return Hasil(
         vonis=_vonis_akhir(jawaban.syarat),
         skor=_skor(jawaban.syarat),
-        ringkasan=jawaban.ringkasan,
+        ringkasan=_ringkasan(jawaban.syarat),
         syarat=jawaban.syarat,
         detail_terbaca=_ada_iklan_penuh(iklan),
     )

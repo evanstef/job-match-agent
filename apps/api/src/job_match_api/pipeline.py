@@ -20,16 +20,10 @@ logger = logging.getLogger(__name__)
 
 PREFERENSI_DEFAULT = Preferensi(lokasi=["Jakarta", "Tangerang"], mau_remote=True)
 
-# Lantai, bukan tebing. Diukur: satu lowongan yang sama dinilai lima kali menghasilkan
-# skor 45, 45, 45, 70, 70 — model membaca iklan yang sama sebagai 2 atau 3 syarat,
-# dan rumus skor membagi dengan jumlah itu, jadi goyangannya diperbesar.
-#
-# Dengan ambang 50, lowongan itu terkirim atau tidak tergantung nasib. Sekarang yang
-# menentukan urutannya, bukan satu garis: yang bagus tetap cenderung di atas yang
-# jelek meski angkanya bergeser. Lantai 20 hanya menahan sampah masuk waktu tidak
-# ada kandidat bagus sama sekali — jarak dari "bagus" ke bawah 20 lebih lebar
-# daripada goyangannya.
-AMBANG_SKOR = 20
+# Lantai, bukan tebing. Satu lowongan yang sama dinilai 5x menghasilkan 45/45/45/70/70
+# (17 Agu) dan 36/76/36/56/56 (19 Agu) — ambang di dalam pita itu jadi undian.
+# Yang menyeleksi urutan skor + MAKS_KIRIM; lantai cuma menahan waktu tak ada yang bagus.
+AMBANG_SKOR = 35
 MAKS_KIRIM = 10
 JEDA_DETIK = 10
 
@@ -110,7 +104,13 @@ def jalankan(db: Session, user_id: int, maks_dinilai: int = 10) -> HasilJalan:
     profil = ProfilCv(**cv.profil)
     pref = _preferensi(cv.user)
 
-    lowongan = ambil_lowongan_belum_dinilai(db, user_id, _vektor_cv(db, cv))
+    # tanpa vektor, kandidat jatuh ke urutan id dan batas jarak tidak berlaku —
+    # kuota Groq habis untuk lowongan asal-asalan. Lebih baik putaran ini gagal.
+    vektor = _vektor_cv(db, cv)
+    if vektor is None:
+        raise PipelineError("Vektor CV belum ada — kandidat tidak bisa diurutkan")
+
+    lowongan = ambil_lowongan_belum_dinilai(db, user_id, vektor)
     kandidat = saring_kasar(profil, lowongan)
 
     # dinilai satu per satu, dijeda karena kuota Groq dihitung per menit

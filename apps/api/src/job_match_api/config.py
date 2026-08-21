@@ -1,11 +1,17 @@
+from pathlib import Path
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+# .env tinggal di apps/api. Dipatok dari lokasi berkas ini, bukan dari folder
+# proses — supaya nilai yang kebaca tidak berubah tergantung dipanggil dari mana
+BERKAS_ENV = Path(__file__).resolve().parents[2] / ".env"
 
 
 class Settings(BaseSettings):
     """Semua konfigurasi dibaca dari environment / file .env."""
 
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file=BERKAS_ENV,
         env_file_encoding="utf-8",
         extra="ignore",
     )
