@@ -36,6 +36,16 @@ make web      # http://localhost:3010
 
 `make` tanpa argumen menampilkan seluruh perintah yang tersedia.
 
+### Konfigurasi
+
+Semua nilai tinggal di **satu** berkas: `apps/api/.env` (contoh:
+`apps/api/.env.example`). Dibaca aplikasi lewat `config.py`, dan oleh docker
+compose lewat `--env-file` yang dipatok di `Makefile` — sengaja satu, supaya
+tidak ada `.env` kedua yang diam-diam berisi nilai berbeda.
+
+Frontend punya berkas sendiri (`apps/web/.env.local`), isinya cuma
+`NEXT_PUBLIC_API_URL`. Rahasia backend sengaja tidak pernah sampai ke sana.
+
 ### Kenapa Makefile, bukan pnpm workspace
 
 `apps/api` dan `apps/web` adalah dua project mandiri yang kebetulan tinggal di

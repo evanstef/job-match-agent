@@ -5,12 +5,16 @@
 API_DIR := apps/api
 WEB_DIR := apps/web
 
+# satu-satunya berkas konfigurasi dipakai bareng aplikasi & compose,
+# supaya tidak ada .env kedua yang diam-diam berisi nilai lain
+COMPOSE := docker compose --env-file $(API_DIR)/.env
+
 help: ## Tampilkan daftar perintah
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) \
 		| awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-14s\033[0m %s\n", $$1, $$2}'
 
 setup: install-api install-web ## Pasang semua dependency (api + web)
-	@test -f .env || (cp .env.example .env && echo "-> .env dibuat dari contoh, isi dulu nilainya")
+	@test -f $(API_DIR)/.env || (cp $(API_DIR)/.env.example $(API_DIR)/.env && echo "-> $(API_DIR)/.env dibuat dari contoh, isi dulu nilainya")
 
 install-api: ## Pasang dependency Python
 	cd $(API_DIR) && uv sync
@@ -25,13 +29,13 @@ web: ## Jalankan web (http://localhost:3010)
 	cd $(WEB_DIR) && pnpm dev --port 3010
 
 db: ## Nyalakan Postgres + pgvector (port 5433)
-	docker compose up -d db
+	$(COMPOSE) up -d db
 
 db-down: ## Matikan Postgres (data tetap aman di volume)
-	docker compose down
+	$(COMPOSE) down
 
 db-logs: ## Lihat log Postgres
-	docker compose logs -f db
+	$(COMPOSE) logs -f db
 
 test: ## Jalankan test Python
 	cd $(API_DIR) && uv run pytest
