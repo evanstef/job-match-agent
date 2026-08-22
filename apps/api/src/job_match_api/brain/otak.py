@@ -7,6 +7,7 @@ from pydantic import BaseModel, ValidationError, model_validator
 from job_match_api.config import settings
 from job_match_api.db.models import Lowongan
 from job_match_api.teks import bersihkan
+from job_match_api.vektor import VektorError, dari_teks
 
 Dimensi = Literal["peran", "keterampilan", "senioritas", "pendidikan", "lokasi", "kesediaan"]
 Sifat = Literal["lunak", "keras mutlak", "keras bersyarat"]
@@ -15,6 +16,7 @@ VonisAkhir = Literal["LAMAR", "PERTIMBANGKAN", "SKIP"]
 
 BOBOT = {"cocok": 1.0, "tidak kebaca": 0.4, "tidak cocok": 0.0}
 POTONGAN_KERAS_BERSYARAT = 25
+JARAK_PERAN_MAKS = 0.46
 # syarat semu, menahan lowongan bersyarat sedikit agar tidak langsung menang
 BUKTI_SEMU = 2
 # kuota Groq gratis dihitung per menit; biarkan SDK mundur-teratur sebelum menyerah
@@ -221,6 +223,24 @@ def _ada_iklan_penuh(iklan: str | None) -> bool:
 POLA_REMOTE = re.compile(r"\b(remote|wfh|work from home|kerja dari rumah|hybrid)\b", re.IGNORECASE)
 
 
+def _vonis_peran(peran: list[str], judul: str) -> Vonis | None:
+    """`cocok` kalau judul dekat salah satu peran di CV. None = kode tidak yakin.
+
+    None sengaja dipakai untuk "serahkan ke LLM", bukan "tidak cocok" — di atas ambang
+    peran yang benar dan yang salah duduk di jarak yang sama, jadi tak ada dasar memvonis.
+    """
+    if not peran:
+        return None
+
+    try:
+        v = dari_teks(judul)
+        jarak = min(1 - sum(a * b for a, b in zip(dari_teks(p), v)) for p in peran)
+    except VektorError:
+        return None
+
+    return "cocok" if jarak < JARAK_PERAN_MAKS else None
+
+
 def _vonis_lokasi(pref: Preferensi, low: Lowongan, iklan: str | None) -> Vonis:
     """Vonis dimensi lokasi, diputuskan kode. Jawaban model untuk dimensi ini dibuang.
 
@@ -273,6 +293,7 @@ def nilai(
     pref: Preferensi,
     low: Lowongan,
     iklan: str | None = None,
+    peran: list[str] | None = None,
 ) -> Hasil:
     """Nilai satu lowongan terhadap satu CV memakai rubrik."""
     if not settings.groq_api_key:
@@ -311,6 +332,12 @@ def nilai(
         elif s.dimensi == "kesediaan":
             s.vonis = "tidak kebaca"
             s.bukti = None
+        elif s.dimensi == "peran":
+            # bukti WAJIB diisi: Hasil() memvalidasi ulang, dan "cocok" tanpa bukti
+            # diturunkan lagi jadi "tidak kebaca" tanpa suara
+            if (v := _vonis_peran(peran or [], low.title)) is not None:
+                s.vonis = v
+                s.bukti = f"Peran di CV: {', '.join(peran or [])}"
 
     return Hasil(
         vonis=_vonis_akhir(jawaban.syarat),

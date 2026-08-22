@@ -120,7 +120,7 @@ def jalankan(db: Session, user_id: int, maks_dinilai: int = 10) -> HasilJalan:
         if urutan:
             time.sleep(JEDA_DETIK)
         try:
-            dinilai.append((low, nilai(cv.teks_mentah, pref, low, low.isi_lengkap)))
+            dinilai.append((low, nilai(cv.teks_mentah, pref, low, low.isi_lengkap, profil.peran)))
         except OtakError as e:
             # satu lowongan gagal tidak boleh mematikan seluruh putaran
             gagal += 1

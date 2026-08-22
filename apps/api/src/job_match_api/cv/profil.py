@@ -1,11 +1,12 @@
 from typing import Any, Literal
 
 from groq import Groq, GroqError
-from pydantic import BaseModel, Field, ValidationError, field_validator
+from pydantic import BaseModel, Field, ValidationError, ValidationInfo, field_validator
 
 from job_match_api.config import settings
 
 MAKS_SKILL = 25
+MAKS_PERAN = 6
 # kuota Groq gratis dihitung per menit; biarkan SDK mundur-teratur sebelum menyerah
 MAKS_PERCOBAAN = 5
 
@@ -13,6 +14,7 @@ INSTRUKSI = """Kamu pembaca CV. Baca teks CV lalu keluarkan JSON dengan bentuk p
 
   {
     "posisi": "jabatan yang DITUJU pelamar, contoh: Frontend Developer",
+    "peran": ["Frontend Developer", "Fullstack Developer"],
     "level": "junior | menengah | senior",
     "pengalaman_tahun": 2.5,
     "skill": ["React", "TypeScript"]
@@ -22,7 +24,12 @@ INSTRUKSI = """Kamu pembaca CV. Baca teks CV lalu keluarkan JSON dengan bentuk p
   - posisi: ambil dari judul/headline di kepala CV — itu jabatan yang dituju pelamar.
     Riwayat kerja hanya bukti pengalaman, BUKAN tujuannya. Orang yang beralih karier
     punya jabatan lama yang tidak lagi dia cari. Kalau CV tidak punya headline sama
-    sekali, baru pakai jabatan terakhir yang dikerjakan.
+    sekali, baru pakai jabatan terakhir yang dikerjakan. Salin APA ADANYA seperti
+    tertulis di CV — perapian nama hanya berlaku untuk "peran", bukan untuk ini.
+  - peran: nama jabatan TEKNIS yang cocok dengan pelamar, dari headline maupun riwayat
+    kerja. Tulis nama bakunya saja: "Frontend Developer", bukan "FRONT END WEB DEVELOPER"
+    atau "Front End Dev Intern". Jabatan non-teknis (admin, kasir, staf gudang, resepsionis)
+    JANGAN dimasukkan sama sekali walaupun tertulis di CV.
   - level: <2 tahun = junior, 2-5 tahun = menengah, >5 tahun = senior
   - pengalaman_tahun: angka, boleh desimal. Hitung dari tanggal kerja, bukan dari klaim di ringkasan
   - skill: tulis nama teknologinya saja, sebanyak yang benar-benar tertulis di CV.
@@ -38,16 +45,19 @@ class ProfilError(Exception):
 
 class ProfilCv(BaseModel):
     posisi: str
+    # kosong = CV lama yang dibaca sebelum kolom ini ada; pemakainya jatuh ke `posisi`
+    peran: list[str] = []
     level: Literal["junior", "menengah", "senior"]
     pengalaman_tahun: float = Field(ge=0, le=60)
     skill: list[str]
 
-    @field_validator("skill", mode="before")
+    @field_validator("skill", "peran", mode="before")
     @classmethod
-    def _buang_yang_bukan_teks(cls, v: Any) -> Any:
+    def _buang_yang_bukan_teks(cls, v: Any, info: ValidationInfo) -> Any:
         # satu angka nyasar dari LLM tidak boleh membatalkan seluruh profil
         if isinstance(v, list):
-            return [s for s in v if isinstance(s, str) and s.strip()][:MAKS_SKILL]
+            batas = MAKS_SKILL if info.field_name == "skill" else MAKS_PERAN
+            return [s for s in v if isinstance(s, str) and s.strip()][:batas]
         return v
 
 
