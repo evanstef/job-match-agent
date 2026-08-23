@@ -36,6 +36,7 @@ class LowonganTerpilih(BaseModel):
     id: int
     title: str
     company: str | None
+    location: str | None
     link: str
     skor: int
     vonis: str
@@ -87,6 +88,7 @@ def _terpilih(low: Lowongan, hasil: Hasil) -> LowonganTerpilih:
         id=low.id,
         title=low.title,
         company=low.company,
+        location=low.location,
         link=low.link,
         skor=hasil.skor,
         vonis=hasil.vonis,
