@@ -24,7 +24,7 @@ SKOR_MUNGKIN = {1, 7, 11, 15, 16, 19, 24, 27, 31, 32, 36, 39, 40, 44, 51, 52, 56
 
 
 def _syarat(**vonis_per_dimensi):
-    """Enam kotak lengkap; yang tidak disebut diisi 'tidak kebaca'."""
+    """Lima kotak lengkap; yang tidak disebut diisi 'tidak kebaca'."""
     return [
         Syarat(
             dimensi=d,
@@ -106,7 +106,6 @@ def test_ringkasan_menyebut_setiap_dimensi_sekali():
 
     for dimensi in ("peran", "keterampilan", "senioritas", "pendidikan", "lokasi"):
         assert hasil.lower().count(dimensi) == 1
-    assert "kesediaan" not in hasil.lower()
 
 
 def test_vonis_peran_dipatok_cocok_kalau_dekat(monkeypatch):
