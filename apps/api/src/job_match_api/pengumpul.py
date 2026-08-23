@@ -21,8 +21,9 @@ MAKS_KATA_KUNCI = 5
 MAKS_LOKASI = 3
 
 # rem kuota: kota x halaman tidak boleh melebihi ini dalam satu putaran.
-# 5 permintaan x 3 putaran x 30 hari = 450/bulan, dari batas Jooble 500.
-# Angka 6 (3 kota x 2 halaman) sengaja tidak dipakai — jadinya 540, lewat batas.
+# ⚠️ Kuota Jooble 500 itu SEUMUR HIDUP, bukan per bulan — tidak ada resetan.
+# 5 permintaan x 2 putaran/hari = 10/hari, jadi jatahnya habis dalam ~50 hari.
+# Menaikkan angka ini memperpendek umurnya, bukan sekadar menambah beban bulanan.
 MAKS_PERMINTAAN = 5
 
 LOKASI_DEFAULT = "Indonesia"

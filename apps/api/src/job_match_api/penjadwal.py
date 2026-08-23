@@ -14,17 +14,17 @@ from job_match_api.putaran import jalankan_dan_kirim
 
 logger = logging.getLogger(__name__)
 
-# WAJIB dipatok: server jalan di UTC, hour="8" polos berarti 15.00 WIB
-JAM = "8,15,21"
+# WAJIB dipatok: server jalan di UTC, hour="9" polos berarti 16.00 WIB
+JAM = "9,13"
 ZONA = "Asia/Jakarta"
 
 # Dipatok kuota, bukan selera: Groq gratis 200.000 token/hari, satu penilaian ~2.000.
-# 20 x 3 putaran = 120.000, masih muat. Yang kepotong adalah yang paling jauh dari CV.
+# 20 x 2 putaran = 80.000, masih longgar. Yang kepotong adalah yang paling jauh dari CV.
 MAKS_DINILAI = 20
 
 # 100 lowongan per halaman; berapa banyak yang benar-benar tertarik dibatasi
 # MAKS_PERMINTAAN di pengumpul, bukan angka ini
-HALAMAN = 2
+HALAMAN = 3
 
 _penjadwal = BackgroundScheduler(timezone=ZONA)
 
