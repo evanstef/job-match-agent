@@ -45,6 +45,19 @@ def _isi_kolam(db: Session) -> None:
         # penarikan gagal bukan alasan melewatkan penilaian — lowongan lama masih ada
         logger.exception("Penarikan lowongan gagal")
 
+    # Glints belum diikutkan putaran otomatis — pengumpul.tarik_glints sudah ada,
+    # tinggal buka blok ini dan tambahkan tarik_glints ke impor di atas.
+    # try:
+    #     hasil = tarik_glints(db)
+    #     logger.info(
+    #         "Tarik Glints: %s dibaca, %s baru (%s)",
+    #         hasil.dibaca,
+    #         hasil.baru,
+    #         ", ".join(hasil.kata_kunci),
+    #     )
+    # except Exception:
+    #     logger.exception("Penarikan Glints gagal")
+
     try:
         hasil = isi_vektor(db)
         logger.info(

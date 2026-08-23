@@ -22,6 +22,8 @@ class Settings(BaseSettings):
 
     jooble_api_key: str = ""
     jooble_base_url: str = "https://id.jooble.org/api"
+    scraper_url: str = "http://localhost:3000"
+    scraper_api_key: str = ""
     groq_api_key: str = ""
     groq_model: str = "openai/gpt-oss-120b"
     model_cache_dir: str = ".model-cache"
