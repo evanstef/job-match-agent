@@ -9,7 +9,7 @@ from job_match_api.db.repository import ambil_user_siap
 from job_match_api.db.session import SessionLocal
 from job_match_api.pengaya import lengkapi
 from job_match_api.pengisi import isi_vektor
-from job_match_api.pengumpul import tarik
+from job_match_api.pengumpul import tarik, tarik_glints
 from job_match_api.putaran import jalankan_dan_kirim
 
 logger = logging.getLogger(__name__)
@@ -22,41 +22,27 @@ ZONA = "Asia/Jakarta"
 # 20 x 2 putaran = 80.000, masih longgar. Yang kepotong adalah yang paling jauh dari CV.
 MAKS_DINILAI = 20
 
-# 100 lowongan per halaman; berapa banyak yang benar-benar tertarik dibatasi
-# MAKS_PERMINTAAN di pengumpul, bukan angka ini
+# Hanya dipakai jalur Jooble (_isi_kolam_jooble). 100 lowongan per halaman;
+# berapa banyak yang benar-benar tertarik dibatasi MAKS_PERMINTAAN di pengumpul,
+# bukan angka ini
 HALAMAN = 3
 
 _penjadwal = BackgroundScheduler(timezone=ZONA)
 
 
 def _isi_kolam(db: Session) -> None:
-    """Tiga langkah pengisi bahan sebelum penilaian: tarik, hitung vektor, lengkapi isi."""
+    """Dua langkah pengisi bahan sebelum penilaian: tarik dari scraper, hitung vektor."""
     try:
-        hasil = tarik(db, halaman=HALAMAN)
+        hasil = tarik_glints(db)
         logger.info(
-            "Tarik: %s permintaan, %s dibaca, %s baru (%s | %s)",
-            hasil.permintaan,
+            "Tarik Glints: %s dibaca, %s baru (%s)",
             hasil.dibaca,
             hasil.baru,
-            hasil.kata_kunci,
-            ", ".join(hasil.lokasi),
+            ", ".join(hasil.kata_kunci),
         )
     except Exception:
         # penarikan gagal bukan alasan melewatkan penilaian — lowongan lama masih ada
-        logger.exception("Penarikan lowongan gagal")
-
-    # Glints belum diikutkan putaran otomatis — pengumpul.tarik_glints sudah ada,
-    # tinggal buka blok ini dan tambahkan tarik_glints ke impor di atas.
-    # try:
-    #     hasil = tarik_glints(db)
-    #     logger.info(
-    #         "Tarik Glints: %s dibaca, %s baru (%s)",
-    #         hasil.dibaca,
-    #         hasil.baru,
-    #         ", ".join(hasil.kata_kunci),
-    #     )
-    # except Exception:
-    #     logger.exception("Penarikan Glints gagal")
+        logger.exception("Penarikan Glints gagal")
 
     try:
         hasil = isi_vektor(db)
@@ -68,6 +54,36 @@ def _isi_kolam(db: Session) -> None:
         )
     except Exception:
         logger.exception("Pengisian vektor gagal")
+
+
+def _isi_kolam_jooble(db: Session) -> None:
+    """LEGACY — tidak dipanggil sejak 23 Agu 2026, digantikan scraper Glints.
+
+    Dibiarkan sebagai fungsi utuh, bukan dikomentari, supaya tetap ikut diperiksa
+    lint dan tidak diam-diam basi kalau tanda tangan tarik() atau lengkapi()
+    berubah. Menghidupkannya lagi cukup dengan memanggilnya dari _isi_kolam.
+
+    lengkapi() ikut dimatikan di sini karena hanya melayani baris Jooble:
+    antreannya disaring ke sumber ATS, sedangkan lowongan Glints sudah membawa
+    isi lengkapnya sendiri sejak masuk.
+
+    ⚠️ Kalau dihidupkan lagi, ingat urutannya: isi_vektor menghitung vektor dari
+    isi_lengkap, tapi di jalur ini isi_lengkap baru datang di lengkapi() —
+    sesudahnya. Baris yang vektornya terlanjur dihitung tidak pernah dihitung
+    ulang, jadi vektornya akan lahir dari cuplikan saja.
+    """
+    try:
+        hasil = tarik(db, halaman=HALAMAN)
+        logger.info(
+            "Tarik: %s permintaan, %s dibaca, %s baru (%s | %s)",
+            hasil.permintaan,
+            hasil.dibaca,
+            hasil.baru,
+            hasil.kata_kunci,
+            ", ".join(hasil.lokasi),
+        )
+    except Exception:
+        logger.exception("Penarikan lowongan gagal")
 
     try:
         hasil = lengkapi(db)
