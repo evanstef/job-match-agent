@@ -1,10 +1,13 @@
 import re
+import time
+from collections import Counter
 from typing import Literal
 
 from groq import Groq, GroqError
 from pydantic import BaseModel, ValidationError, model_validator
 
 from job_match_api.config import settings
+from job_match_api.cv.profil import JENJANG_ALIAS, Jenjang
 from job_match_api.db.models import Lowongan
 from job_match_api.teks import bersihkan
 from job_match_api.vektor import VektorError, dari_teks
@@ -21,6 +24,13 @@ JARAK_PERAN_MAKS = 0.46
 BUKTI_SEMU = 2
 # kuota Groq gratis dihitung per menit; biarkan SDK mundur-teratur sebelum menyerah
 MAKS_PERCOBAAN = 5
+# Masukan yang sama bisa dijawab beda; jawabannya disuarakan di _suara. Ganjil,
+# supaya mayoritas bisa terbentuk tanpa seri.
+ULANGAN = 3
+# 12.000 token/menit di Groq gratis, satu panggilan ~2.000 token. Jeda 15 detik
+# menahan laju di 4 panggilan/menit — masih sisa ruang untuk jeda antar-lowongan
+# di pipeline.
+JEDA_ULANGAN_DETIK = 15
 
 INSTRUKSI = """Kamu penilai lowongan kerja. Jawab LIMA pertanyaan, tidak lebih dan
 tidak kurang — satu untuk tiap dimensi, berurutan seperti di bawah. Balas JSON
@@ -210,6 +220,57 @@ def _ada_iklan_penuh(iklan: str | None) -> bool:
     return bool(iklan and iklan.strip())
 
 
+# Iklan Glints memakai chip baku "Minimal Sarjana (S1)"; teks bebas biasanya menulis
+# "Pendidikan minimal S1". Jendela 40 huruf sesudah kata kuncinya cukup memuat keduanya.
+POLA_SYARAT_PENDIDIKAN = re.compile(r"(?:minimal|min\.|pendidikan)[^\n]{0,40}", re.IGNORECASE)
+# JENJANG_ALIAS terurut dari tertinggi; dibalik jadi SMA/SMK=1 sampai S3=5
+PERINGKAT_JENJANG = {j: i for i, (j, _) in enumerate(reversed(JENJANG_ALIAS), start=1)}
+
+
+def _syarat_pendidikan(iklan: str) -> Jenjang:
+    """Jenjang yang diminta iklan, dibaca kode. Kosong artinya tidak disebut.
+
+    Diuji atas 14 iklan Glints: 14 kena, nol yang menghasilkan dua jenjang berbeda.
+    Kalau suatu saat berbeda, yang diambil yang TERENDAH — meloloskan lowongan yang
+    tidak cocok cuma memboroskan 30 detik user, sedangkan menutup lowongan yang cocok
+    tidak bisa ditebus. Aturan yang sama menahan salah tangkap kata seperti
+    "master data" yang kebetulan duduk dekat kata "minimal".
+    """
+    ketemu = set()
+    for potongan in POLA_SYARAT_PENDIDIKAN.findall(iklan or ""):
+        for jenjang, pola in JENJANG_ALIAS:
+            if re.search(pola, potongan, re.IGNORECASE):
+                ketemu.add(jenjang)
+                break
+
+    # JENJANG_ALIAS terurut dari tertinggi, jadi yang ketemu paling belakang = terendah
+    for jenjang, _ in reversed(JENJANG_ALIAS):
+        if jenjang in ketemu:
+            return jenjang
+
+    return ""
+
+
+def _vonis_pendidikan(jenjang_cv: Jenjang, low: Lowongan, iklan: str | None) -> Vonis:
+    """Vonis dimensi pendidikan, diputuskan kode. Jawaban model untuk kotak ini dibuang.
+
+    Ini satu-satunya kotak keras mutlak: "tidak cocok" di sini langsung SKIP. Waktu
+    diserahkan ke model, jawabannya berbalik antar-panggilan — 24 Agu lowongan yang
+    sama terukur SKIP lalu LAMAR, karena "Minimal S1" lawan CV yang masih kuliah
+    memang pertanyaan yang mendua. Voting tidak menolong yang sebarannya 50/50.
+
+    Keputusan Evan 24 Agu: sedang menempuh suatu jenjang dihitung SUDAH memenuhi
+    jenjang itu, jadi `pendidikan_status` sengaja tidak ikut menghitung.
+    """
+    diminta = _syarat_pendidikan(iklan if _ada_iklan_penuh(iklan) else (low.snippet or ""))
+
+    # salah satu sisi tidak terbaca -> jangan menutup pintu, itu tugas "tidak kebaca"
+    if not diminta or not jenjang_cv:
+        return "tidak kebaca"
+
+    return "cocok" if PERINGKAT_JENJANG[jenjang_cv] >= PERINGKAT_JENJANG[diminta] else "tidak cocok"
+
+
 POLA_REMOTE = re.compile(r"\b(remote|wfh|work from home|kerja dari rumah|hybrid)\b", re.IGNORECASE)
 
 
@@ -278,19 +339,14 @@ Lokasi: {low.location or "-"}
 {bersihkan(isi)}"""
 
 
-def nilai(
+def _tanya(
+    client: Groq,
     cv_teks: str,
     pref: Preferensi,
     low: Lowongan,
-    iklan: str | None = None,
-    peran: list[str] | None = None,
-) -> Hasil:
-    """Nilai satu lowongan terhadap satu CV memakai rubrik."""
-    if not settings.groq_api_key:
-        raise OtakError("API key Groq tidak ditemukan")
-
-    client = Groq(api_key=settings.groq_api_key, max_retries=MAKS_PERCOBAAN)
-
+    iklan: str | None,
+) -> _JawabanLLM:
+    """Satu panggilan ke model. Dipanggil berkali-kali untuk lowongan yang sama."""
     try:
         respons = client.chat.completions.create(
             model=settings.groq_model,
@@ -308,13 +364,79 @@ def nilai(
         raise OtakError("Groq membalas tanpa isi") from e
 
     try:
-        jawaban = _JawabanLLM.model_validate_json(isi)
+        return _JawabanLLM.model_validate_json(isi)
     except ValidationError as e:
         raise OtakError(f"Jawaban LLM tidak sesuai bentuk: {e.error_count()} kesalahan") from e
 
-    # Dua dimensi vonisnya ditimpa kode, tidak dipercayakan ke model:
-    # lokasi lewat _vonis_lokasi, peran lewat _vonis_peran.
-    for s in jawaban.syarat:
+
+def _suara(jawaban: list[_JawabanLLM]) -> list[Syarat]:
+    """Gabungkan beberapa jawaban jadi satu: per dimensi ambil vonis terbanyak.
+
+    Model yang sama dengan masukan yang sama bisa membalas beda — 23 Agu satu
+    lowongan terukur 11 lalu 0 karena kotak pendidikan berpindah vonis, dan satu
+    kotak yang bergeser berharga 12-25 poin di _skor. Yang diambil suara terbanyak,
+    bukan panggilan pertama, supaya jawabannya sama lagi besok.
+
+    Butuh LEBIH dari separuh suara. Tanpa mayoritas (1-1-1, atau seri 1-1) kotaknya
+    jadi "tidak kebaca" — nilai tengah yang sudah dipakai _lima_kotak, bukan undian.
+    """
+    if not jawaban:
+        raise OtakError("Tidak ada jawaban yang bisa disuarakan")
+
+    mayoritas = len(jawaban) // 2 + 1
+    hasil: list[Syarat] = []
+
+    for dimensi in SIFAT_DARI_DIMENSI:
+        kotak = [s for j in jawaban for s in j.syarat if s.dimensi == dimensi]
+        menang, jumlah = Counter(s.vonis for s in kotak).most_common(1)[0]
+
+        if jumlah < mayoritas:
+            hasil.append(Syarat(teks="", dimensi=dimensi, vonis="tidak kebaca"))
+            continue
+
+        # teks & bukti ikut jawaban yang vonisnya menang — jangan diambil dari
+        # jawaban yang kalah, nanti "cocok" membawa bukti milik "tidak cocok"
+        hasil.append(next(s for s in kotak if s.vonis == menang))
+
+    return hasil
+
+
+def nilai(
+    cv_teks: str,
+    pref: Preferensi,
+    low: Lowongan,
+    iklan: str | None = None,
+    peran: list[str] | None = None,
+    pendidikan: Jenjang = "",
+) -> Hasil:
+    """Nilai satu lowongan terhadap satu CV memakai rubrik."""
+    if not settings.groq_api_key:
+        raise OtakError("API key Groq tidak ditemukan")
+
+    # client dibikin sekali lalu dioper: satu sambungan dipakai bersama semua
+    # panggilan untuk lowongan ini
+    client = Groq(api_key=settings.groq_api_key, max_retries=MAKS_PERCOBAAN)
+
+    # Panggilan yang gagal tidak menggugurkan sisanya — dua jawaban masih bisa
+    # disuarakan, dan satu jawaban masih lebih baik daripada lowongan ini dilewati.
+    jawaban: list[_JawabanLLM] = []
+    galat: OtakError | None = None
+    for urutan in range(ULANGAN):
+        if urutan:
+            time.sleep(JEDA_ULANGAN_DETIK)
+        try:
+            jawaban.append(_tanya(client, cv_teks, pref, low, iklan))
+        except OtakError as e:
+            galat = e
+
+    if not jawaban:
+        raise OtakError(f"{ULANGAN} panggilan gagal semua") from galat
+
+    syarat = _suara(jawaban)
+
+    # Tiga dimensi vonisnya ditimpa kode, tidak dipercayakan ke model: lokasi,
+    # peran, dan pendidikan. Ketiganya pernah goyang atau salah waktu diserahkan.
+    for s in syarat:
         if s.dimensi == "lokasi":
             s.vonis = _vonis_lokasi(pref, low, iklan)
             s.bukti = f"Preferensi: {', '.join(pref.lokasi)}" if s.vonis == "cocok" else None
@@ -324,11 +446,14 @@ def nilai(
             if (v := _vonis_peran(peran or [], low.title)) is not None:
                 s.vonis = v
                 s.bukti = f"Peran di CV: {', '.join(peran or [])}"
+        elif s.dimensi == "pendidikan":
+            s.vonis = _vonis_pendidikan(pendidikan, low, iklan)
+            s.bukti = f"Pendidikan di CV: {pendidikan}" if s.vonis == "cocok" else None
 
     return Hasil(
-        vonis=_vonis_akhir(jawaban.syarat),
-        skor=_skor(jawaban.syarat),
-        ringkasan=_ringkasan(jawaban.syarat),
-        syarat=jawaban.syarat,
+        vonis=_vonis_akhir(syarat),
+        skor=_skor(syarat),
+        ringkasan=_ringkasan(syarat),
+        syarat=syarat,
         detail_terbaca=_ada_iklan_penuh(iklan),
     )
