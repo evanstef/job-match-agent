@@ -18,11 +18,13 @@ logger = logging.getLogger(__name__)
 JAM = "9,13"
 ZONA = "Asia/Jakarta"
 
-# Dipatok kuota, bukan selera: Groq gratis 200.000 token/hari. Satu penilaian
-# sekarang ULANGAN=3 panggilan x ~2.000 token = ~6.000 (dulu satu panggilan saja).
-# 15 x 2 putaran x 6.000 = 180.000, masih di bawah jatah. Yang kepotong adalah
+# Dipatok kuota, bukan selera: Groq gratis 200.000 token/hari. Satu penilaian =
+# ULANGAN=3 panggilan x 3.880 token (rata-rata hasil ukur 25 Agu) = 11.640.
+# 200.000 / 11.640 = 17 penilaian sehari, dibagi 2 putaran = 8.
+# Angka 20 lalu 15 yang pernah dipakai di sini berdiri di atas perkiraan ~2.000
+# token per panggilan yang ternyata meleset dua kali lipat. Yang kepotong adalah
 # yang paling jauh dari CV.
-MAKS_DINILAI = 15
+MAKS_DINILAI = 8
 
 # Hanya dipakai jalur Jooble (_isi_kolam_jooble). 100 lowongan per halaman;
 # berapa banyak yang benar-benar tertarik dibatasi MAKS_PERMINTAAN di pengumpul,

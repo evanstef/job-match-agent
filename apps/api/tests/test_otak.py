@@ -397,3 +397,11 @@ def test_vonis_pendidikan_jatuh_ke_cuplikan_kalau_iklan_kosong():
     low.snippet = "Dicari Front End Developer, minimal SMA/SMK"
 
     assert _vonis_pendidikan("S1", low, None) == "cocok"
+
+
+def test_jeda_ulangan_tidak_boleh_turun_di_bawah_yang_diukur():
+    """Batas 21 detik diturunkan dari ukuran 25 Agu: satu panggilan sampai 4.196
+    token, pagu Groq gratis 12.000 token/menit. Jeda 15 detik yang dipakai semula
+    membuat 8 dari 9 panggilan ditolak lalu diulang SDK."""
+    assert otak.ULANGAN == 3
+    assert otak.JEDA_ULANGAN_DETIK >= 21

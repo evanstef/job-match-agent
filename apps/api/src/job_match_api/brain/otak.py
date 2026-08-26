@@ -27,10 +27,11 @@ MAKS_PERCOBAAN = 5
 # Masukan yang sama bisa dijawab beda; jawabannya disuarakan di _suara. Ganjil,
 # supaya mayoritas bisa terbentuk tanpa seri.
 ULANGAN = 3
-# 12.000 token/menit di Groq gratis, satu panggilan ~2.000 token. Jeda 15 detik
-# menahan laju di 4 panggilan/menit — masih sisa ruang untuk jeda antar-lowongan
-# di pipeline.
-JEDA_ULANGAN_DETIK = 15
+# Diukur 25 Agu, bukan diperkirakan: satu panggilan 3.703-4.196 token (prompt
+# 2.298-2.873 + jawaban 1.090-1.442). Pagu Groq gratis 12.000 token/menit, jadi
+# jarak minimumnya 60 / (12.000 / 4.196) = 21 detik. Jeda 15 detik yang dipakai
+# semula membuat 8 dari 9 panggilan ditolak lalu diulang SDK.
+JEDA_ULANGAN_DETIK = 25
 
 INSTRUKSI = """Kamu penilai lowongan kerja. Jawab LIMA pertanyaan, tidak lebih dan
 tidak kurang — satu untuk tiap dimensi, berurutan seperti di bawah. Balas JSON
