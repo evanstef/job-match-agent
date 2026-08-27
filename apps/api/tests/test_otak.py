@@ -405,3 +405,9 @@ def test_jeda_ulangan_tidak_boleh_turun_di_bawah_yang_diukur():
     membuat 8 dari 9 panggilan ditolak lalu diulang SDK."""
     assert otak.ULANGAN == 3
     assert otak.JEDA_ULANGAN_DETIK >= 21
+
+
+def test_batas_jawaban_tidak_boleh_di_bawah_jawaban_sah_terpanjang():
+    """Jawaban sah terpanjang yang terukur 25-26 Agu: 1.828 token. Batas di bawah itu
+    memotong jawaban yang benar di tengah, dan yang kepotong jadi JSON rusak."""
+    assert otak.MAKS_TOKEN_JAWABAN >= 1828

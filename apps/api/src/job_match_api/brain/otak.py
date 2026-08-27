@@ -32,6 +32,11 @@ ULANGAN = 3
 # jarak minimumnya 60 / (12.000 / 4.196) = 21 detik. Jeda 15 detik yang dipakai
 # semula membuat 8 dari 9 panggilan ditolak lalu diulang SDK.
 JEDA_ULANGAN_DETIK = 25
+# Langit-langit panjang jawaban. Dari 11 pengukuran 25-26 Agu, jawaban sah terpanjang
+# 1.828 token — tapi satu panggilan pernah mengoceh sampai 3.072 dan justru cuma
+# mengeluarkan 3 kotak dari 5. Batas ini memotong ekor itu; jawaban yang kepotong jadi
+# JSON rusak lalu gugur sebagai satu suara, dan _suara masih jalan dengan dua sisanya.
+MAKS_TOKEN_JAWABAN = 2500
 
 INSTRUKSI = """Kamu penilai lowongan kerja. Jawab LIMA pertanyaan, tidak lebih dan
 tidak kurang — satu untuk tiap dimensi, berurutan seperti di bawah. Balas JSON
@@ -357,6 +362,7 @@ def _tanya(
             ],
             response_format={"type": "json_object"},
             temperature=0,
+            max_tokens=MAKS_TOKEN_JAWABAN,
         )
         isi = respons.choices[0].message.content or ""
     except GroqError as e:
