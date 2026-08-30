@@ -30,6 +30,7 @@ class Settings(BaseSettings):
     telegram_bot_token: str = ""
     whatsapp_url: str = "http://localhost:3456"
     whatsapp_tujuan: str = ""
+    whatsapp_api_key: str = ""
 
     # mati secara default supaya menjalankan API di laptop tidak ikut mengirim pesan
     penjadwal_aktif: bool = False
