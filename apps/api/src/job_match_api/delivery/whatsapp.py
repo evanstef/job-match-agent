@@ -36,6 +36,11 @@ def kirim(tujuan: str, teks: str) -> None:
         respons = httpx.post(
             f"{settings.whatsapp_url}/send",
             json={"chatId": tujuan, "message": teks},
+            headers=(
+                {"X-API-KEY": settings.whatsapp_api_key}
+                if settings.whatsapp_api_key
+                else {}
+            ),
             timeout=30,
         )
         respons.raise_for_status()

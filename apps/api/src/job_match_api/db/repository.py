@@ -5,6 +5,7 @@ from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
 from job_match_api.db.models import Cv, Lowongan, LowonganTerkirim, Preferensi, User
+from job_match_api.sources.glints import GlintsJob
 from job_match_api.sources.jooble import PENARIK as PENARIK_JOOBLE
 from job_match_api.sources.jooble import JoobleJob
 
@@ -19,8 +20,6 @@ def cari_user_by_email(db: Session, email: str) -> User | None:
 
 
 # hanya user yang CV-nya sudah terbaca yang bisa dicarikan lowongan.
-# urutannya dipatok: kata kunci & lokasi dipotong di MAKS_* waktu penarikan, jadi
-# tanpa ORDER BY siapa yang tersisih bisa berubah antar putaran tanpa sebab.
 def ambil_user_siap(db: Session) -> list[User]:
     stmt = (
         select(User)
@@ -65,7 +64,9 @@ def simpan_preferensi(
     return pref
 
 
-def simpan_lowongan(db: Session, jobs: list[JoobleJob], penarik: str = PENARIK_JOOBLE) -> int:
+def simpan_lowongan(
+    db: Session, jobs: list[JoobleJob] | list[GlintsJob], penarik: str = PENARIK_JOOBLE
+) -> int:
     if not jobs:
         return 0
 

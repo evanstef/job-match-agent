@@ -4,12 +4,14 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from job_match_api.db.repository import ambil_lowongan_tanpa_vektor, simpan_vektor_lowongan
-from job_match_api.vektor import VektorError, dari_teks, kalimat_lowongan
+from job_match_api.vektor import VektorError, dari_lowongan
 
 logger = logging.getLogger(__name__)
 
-# ~11 ms per lowongan, jadi 1.000 baris sekitar 11 detik. Dibuat lebih besar dari
-# jumlah yang masuk tiap putaran (~500) supaya tumpukan lama ikut terkejar.
+# Satu lowongan beriklan lengkap ~10 keping x 11 ms = ~110 ms, jadi 1.000 baris
+# sekitar 2 menit (dulu 11 detik waktu satu baris cuma sekali embed). Tetap
+# dibuat lebih besar dari jumlah yang masuk tiap putaran (~500) supaya tumpukan
+# lama ikut terkejar.
 BATAS = 1000
 
 
@@ -35,7 +37,7 @@ def isi_vektor(db: Session, batas: int = BATAS) -> HasilIsiVektor:
 
     for low in lowongan:
         try:
-            terisi.append((low.id, dari_teks(kalimat_lowongan(low.title, low.snippet))))
+            terisi.append((low.id, dari_lowongan(low.title, low.snippet, low.isi_lengkap)))
         except VektorError as e:
             # satu baris bermasalah tidak menjatuhkan yang lain
             gagal += 1

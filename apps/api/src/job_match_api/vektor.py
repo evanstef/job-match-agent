@@ -20,6 +20,13 @@ DIMENSI = 384
 # profil hasil sulingan LLM (58 token), bukan teks mentah CV (1.100 token).
 BATAS_TOKEN = 128
 
+# Iklan lengkap dipecah supaya semuanya kebagian dibaca, bukan cuma pembukanya.
+# 400 huruf + judul ~ 120 token, masih di bawah BATAS_TOKEN walau teksnya padat.
+KEPING_HURUF = 400
+# p95 panjang iklan 5.958 huruf = 15 keping; 8 dari 175 iklan melewatinya.
+# Ekor iklan biasanya bukan syarat lagi, jadi yang terpotong murah harganya.
+MAKS_KEPING = 15
+
 
 class VektorError(Exception):
     """Kesalahan saat mengubah teks jadi vektor."""
@@ -86,6 +93,66 @@ def dari_teks(teks: str) -> list[float]:
         raise VektorError("Model mengembalikan vektor nol")
 
     return [x / panjang for x in angka]
+
+
+def _keping(teks: str) -> list[str]:
+    """Pecah teks jadi potongan <= KEPING_HURUF, patah di sela kata."""
+    keping: list[str] = []
+    kini = ""
+    for kata in teks.split():
+        if kini and len(kini) + len(kata) + 1 > KEPING_HURUF:
+            keping.append(kini)
+            kini = kata
+        else:
+            kini = f"{kini} {kata}".strip()
+    if kini:
+        keping.append(kini)
+    return keping
+
+
+def _rata(vektor: list[list[float]]) -> list[float]:
+    """Rata-ratakan beberapa vektor jadi satu, panjang tetap 1.
+
+    Rata-rata vektor satuan tidak lagi bersatuan panjang. dari_teks menjamin
+    panjang 1 dan kode lain bergantung pada jaminan itu, jadi harus disamakan
+    lagi di sini. Membagi dengan jumlah keping tidak perlu — pembagian itu
+    hilang lagi waktu dinormalkan.
+    """
+    jumlah = [sum(v[i] for v in vektor) for i in range(DIMENSI)]
+    panjang = math.sqrt(sum(x * x for x in jumlah))
+    if panjang == 0:
+        raise VektorError("Rata-rata keping menghasilkan vektor nol")
+    return [x / panjang for x in jumlah]
+
+
+def dari_lowongan(judul: str, cuplikan: str | None, iklan: str | None = None) -> list[float]:
+    """Vektor satu lowongan. Iklan lengkap dipecah dulu; tanpa itu, cuplikan saja.
+
+    Kenapa dipecah, bukan dikirim utuh: tokenizer berhenti di BATAS_TOKEN, jadi
+    iklan 3.000 huruf yang dikirim utuh cuma terbaca ~500 huruf pertamanya —
+    diukur, memberi vektor yang sama persis dengan mengirim 500 huruf saja.
+
+    Yang membuat itu fatal: di Glints, ~500 huruf pertama adalah tempelan UI
+    ("Persyaratan, Hybrid, Minimal S1"), bukan isi lowongan. Diukur 2026-08-23:
+    0 dari 9 lowongan front end lolos pintu 0,60, dan yang judulnya persis
+    "Front End Developer" pun terukur 0,752. Setelah dipecah 9 dari 9 lolos,
+    dan jarak ke lowongan yang tidak sebidang justru melebar (0,21 -> 0,29).
+    """
+    teks = (iklan or "").strip()
+    if not teks:
+        return dari_teks(kalimat_lowongan(judul, cuplikan))
+
+    keping = _keping(teks)
+    if len(keping) > MAKS_KEPING:
+        logger.info(
+            "Iklan %s huruf dipotong: %s dari %s keping dipakai",
+            len(teks),
+            MAKS_KEPING,
+            len(keping),
+        )
+        keping = keping[:MAKS_KEPING]
+
+    return _rata([dari_teks(kalimat_lowongan(judul, k)) for k in keping])
 
 
 def dari_profil(profil: dict) -> list[float]:

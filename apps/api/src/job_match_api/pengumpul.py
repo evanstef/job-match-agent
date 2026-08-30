@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 
 from job_match_api.db.models import User
 from job_match_api.db.repository import ambil_user_siap, simpan_lowongan
+from job_match_api.sources import glints
 from job_match_api.sources.jooble import JoobleError, search
 
 logger = logging.getLogger(__name__)
@@ -21,11 +22,21 @@ MAKS_KATA_KUNCI = 5
 MAKS_LOKASI = 3
 
 # rem kuota: kota x halaman tidak boleh melebihi ini dalam satu putaran.
-# 5 permintaan x 3 putaran x 30 hari = 450/bulan, dari batas Jooble 500.
-# Angka 6 (3 kota x 2 halaman) sengaja tidak dipakai — jadinya 540, lewat batas.
+# ⚠️ Kuota Jooble 500 itu SEUMUR HIDUP, bukan per bulan — tidak ada resetan.
+# 5 permintaan x 2 putaran/hari = 10/hari, jadi jatahnya habis dalam ~50 hari.
+# Menaikkan angka ini memperpendek umurnya, bukan sekadar menambah beban bulanan.
 MAKS_PERMINTAAN = 5
 
 LOKASI_DEFAULT = "Indonesia"
+
+# scraper sudah membuang lowongan yang lebih tua dari ini sebelum menyimpannya
+HARI_GLINTS = 7
+
+
+class HasilTarikGlints(BaseModel):
+    kata_kunci: list[str]
+    dibaca: int
+    baru: int
 
 
 class HasilTarik(BaseModel):
@@ -110,4 +121,26 @@ def tarik(db: Session, halaman: int = 1) -> HasilTarik:
         permintaan=permintaan,
         dibaca=dibaca,
         baru=baru,
+    )
+
+
+def tarik_glints(db: Session) -> HasilTarikGlints:
+    """Satu putaran penarikan dari scraper Glints. Kata kunci diambil dari sumber
+    yang sama dengan Jooble, jadi tidak ada daftar kedua yang bisa menyimpang."""
+    pengguna = ambil_user_siap(db)
+    kata_kunci = _unik([k for u in pengguna for k in _kata_kunci(u)], MAKS_KATA_KUNCI)
+
+    if not kata_kunci:
+        logger.info("Tidak ada kata kunci — belum ada CV yang profilnya jadi")
+        return HasilTarikGlints(kata_kunci=[], dibaca=0, baru=0)
+
+    for kata in kata_kunci:
+        glints.daftar_keyword(kata)
+
+    jobs = glints.search(days=HARI_GLINTS)
+
+    return HasilTarikGlints(
+        kata_kunci=kata_kunci,
+        dibaca=len(jobs),
+        baru=simpan_lowongan(db, jobs, penarik=glints.PENARIK),
     )

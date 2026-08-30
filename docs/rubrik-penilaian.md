@@ -27,7 +27,7 @@ satu vonis.
 Isinya mengikuti iklan, labelnya seragam — sehingga tetap bisa dibandingkan
 antar lowongan dan bisa dihitung.
 
-## Enam dimensi
+## Lima dimensi
 
 | # | Dimensi | Sifat | Dinilai terhadap |
 |---|---------|-------|------------------|
@@ -36,7 +36,6 @@ antar lowongan dan bisa dihitung.
 | 3 | Senioritas / lama pengalaman | lunak | CV |
 | 4 | Pendidikan & penyaring mati | keras mutlak | CV |
 | 5 | Lokasi & penempatan | keras bersyarat | preferensi pengguna |
-| 6 | Kesediaan / kondisi kerja | keras bersyarat | preferensi pengguna |
 
 ### Tiga sifat syarat
 
@@ -49,7 +48,7 @@ Kalau gagal di sini, lamaran ditolak sebelum dibaca orang.
 
 **Keras bersyarat** — bukan soal mampu, tapi soal **mau**. Hanya pengguna yang
 tahu jawabannya, jadi tidak boleh diputuskan agent dari isi CV.
-Contoh: domisili, bersedia ditempatkan ke klien, siap lembur, status kontrak.
+Contoh: domisili, bersedia pindah kota, mau bekerja remote.
 
 > Domisili di CV **tidak boleh dipakai** sebagai penyaring. CV sering menuliskan
 > kota asal, bukan kota tempat orangnya sekarang bekerja atau bersedia pindah.
@@ -91,9 +90,22 @@ terisi pun tidak bisa dipercaya (ditemukan nilai seperti `"17000000 $ per jam"`)
 Menilai dimensi yang datanya jarang dan kotor hanya mengundang karangan. Gaji
 tetap **ditampilkan apa adanya** ke pengguna, tapi tidak ikut menentukan vonis.
 
+**Kesediaan / kondisi kerja** (siap lembur, siap shift, siap ditempatkan di klien,
+status kontrak). Sempat jadi dimensi ke-6 sampai 23 Agu 2026. Dibuang karena
+tidak ada sumber datanya: rubrik ini menjanjikan jawabannya diambil saat
+onboarding, tapi form onboarding tidak pernah menanyakannya dan tabel
+`preferensi` tidak pernah punya kolomnya. Yang mengisi kekosongan itu akhirnya
+model — dan tebakannya salah: "Penuh waktu" dibaca sebagai syarat kesediaan lalu
+divonis tidak cocok. Sejak 18 Agu vonisnya dipaksa "tidak kebaca" di kode, jadi
+kotaknya berdiri tanpa pernah menggerakkan apa pun; diuji 243 kombinasi vonis,
+skor dan vonis akhir sama persis dengan atau tanpa kotak ini.
+
+> Kalau suatu saat dimensi ini dihidupkan lagi, kerjakan dari **form-nya dulu**,
+> bukan dari rubriknya. Urutan terbalik itu yang membuatnya mati sejak awal.
+
 ## Preferensi pengguna
 
-Dimensi 5 dan 6 tidak bisa dijawab dari CV, jadi diambil saat onboarding:
+Dimensi 5 tidak bisa dijawab dari CV, jadi diambil saat onboarding:
 
 ```
 lokasi             text[]   maksimal 3 kota

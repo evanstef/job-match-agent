@@ -1,37 +1,34 @@
 from job_match_api.pipeline import LowonganTerpilih
 
-TANDA_BELUM_TERBACA = "belum lengkap"
+
+def _tempat(low: LowonganTerpilih) -> str:
+    """Perusahaan dan kota jadi satu baris. Yang kosong tidak menyisakan pemisah."""
+    return " · ".join(p for p in (low.company, low.location) if p)
 
 
 def _satu(nomor: int, low: LowonganTerpilih) -> str:
     baris = [f"{nomor}. {low.title}"]
 
-    if low.company:
-        baris.append(f"   {low.company}")
+    if tempat := _tempat(low):
+        baris.append(f"   {tempat}")
 
-    catatan = "" if low.detail_terbaca else f" · {TANDA_BELUM_TERBACA}"
-    baris.append(f"   {low.vonis} ({low.skor}){catatan}")
-
-    if low.ringkasan:
-        baris.append(f"   {low.ringkasan}")
-
+    baris.append(f"   {low.vonis}")
     baris.append(f"   {low.link}")
     return "\n".join(baris)
 
 
 def susun_pesan(terpilih: list[LowonganTerpilih]) -> str:
-    """Ubah daftar lowongan terpilih jadi teks siap kirim. Tidak tahu kanalnya apa."""
+    """Ubah daftar lowongan terpilih jadi teks siap kirim. Tidak tahu kanalnya apa.
+
+    Skor sengaja tidak ikut. Dia alat pengurut di dalam kode, bukan penilaian yang
+    layak dibaca orang: lowongan yang sama diukur berkali-kali menghasilkan
+    36/76/36/56/56, jadi menampilkan angkanya menjanjikan ketelitian yang tidak ada.
+    Ringkasan per dimensi ikut ditanggalkan — yang menentukan mau dilamar atau tidak
+    adalah posisi, tempat, dan iklannya sendiri.
+    """
     if not terpilih:
         return "Belum ada lowongan yang cocok putaran ini."
 
     kepala = f"{len(terpilih)} lowongan cocok buat kamu:"
     isi = "\n\n".join(_satu(i, low) for i, low in enumerate(terpilih, start=1))
-
-    ekor = ""
-    if any(not low.detail_terbaca for low in terpilih):
-        ekor = (
-            f"\n\n({TANDA_BELUM_TERBACA} = syarat detail di iklan belum terbaca, "
-            "cek sendiri di tautannya)"
-        )
-
-    return f"{kepala}\n\n{isi}{ekor}"
+    return f"{kepala}\n\n{isi}"
