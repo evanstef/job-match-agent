@@ -41,6 +41,9 @@ app.include_router(saya.router)
 
 # API route untuk semua endpoint yang berhubungan dengan lowongan
 app.include_router(lowongan.router)
+# impor-sample cuma untuk pengembangan — jangan expose di produksi
+if settings.app_env != "production":
+    app.include_router(lowongan.router_dev)
 
 # API route untuk semua endpoint yang berhubungan dengan cv
 app.include_router(cv.router)
