@@ -1,0 +1,10 @@
+# jangan ikut ke build context / image
+.venv
+__pycache__
+*.pyc
+.model-cache
+.pytest_cache
+.ruff_cache
+.env
+.git
+tests
