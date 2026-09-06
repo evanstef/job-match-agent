@@ -9,7 +9,10 @@ from job_match_api.sources.jooble import JoobleError, baca_dari_file, search
 
 router = APIRouter(prefix="/lowongan", tags=["lowongan"])
 
-DATA_DIR = Path(__file__).resolve().parents[5] / "data"
+# data/ ada di root repo (dev); di container tidak ikut & impor-sample memang
+# cuma untuk pengembangan — jangan bikin import gagal kalau kedalaman path beda.
+_berkas = Path(__file__).resolve()
+DATA_DIR = (_berkas.parents[5] if len(_berkas.parents) > 5 else _berkas.parent) / "data"
 
 
 # impor data dari file sample
