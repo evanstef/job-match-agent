@@ -1,0 +1,33 @@
+{
+  "totalCount": 3,
+  "jobs": [
+    {
+      "title": "Fullstack Developer",
+      "location": "Tangerang Selatan",
+      "snippet": "ReactJs, Spring Boot, Golang",
+      "salary": "Rp 7juta - Rp 11juta",
+      "source": "jooble",
+      "type": "",
+      "link": "https://id.jooble.org/jdp/-9199603624530844841",
+      "company": "PT ELISTEC INFORMATIKA UTAMA",
+      "updated": "2026-07-26T18:28:50.6458152+00:00",
+      "id": -9199603624530844841
+    },
+    {
+      "title": "Backend Engineer",
+      "location": "Jakarta",
+      "salary": "Rp 10juta",
+      "source": "jooble",
+      "type": "",
+      "link": "https://id.jooble.org/jdp/123456789",
+      "company": "PT Contoh Nusantara",
+      "updated": "2026-05-01T09:00:00+00:00",
+      "id": 123456789
+    },
+    {
+      "title": "Data Analyst",
+      "link": "https://id.jooble.org/jdp/-5551234567890123456",
+      "id": -5551234567890123456
+    }
+  ]
+}

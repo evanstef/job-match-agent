@@ -3,14 +3,15 @@ from pathlib import Path
 
 from job_match_api.sources.jooble import JoobleJob, baca_dari_file
 
-# dihitung dari lokasi file ini, bukan dari folder tempat pytest dijalankan
-SAMPLE = Path(__file__).resolve().parents[3] / "data" / "jooble-sample-developer-jakarta.json"
+# fixture kecil yang ikut repo — supaya test tidak bergantung pada data provider
+# yang gitignored (dulu baca dari data/, gagal di CI karena file tak ada)
+SAMPLE = Path(__file__).resolve().parent / "fixtures" / "jooble-sample.json"
 
 
 def test_baca_dari_file_mengembalikan_semua_lowongan():
     hasil = baca_dari_file(SAMPLE)
 
-    assert len(hasil) == 100
+    assert len(hasil) == 3
     assert all(isinstance(job, JoobleJob) for job in hasil)
 
 
@@ -31,7 +32,7 @@ def test_updated_dikonversi_jadi_datetime():
 
 
 def test_field_kosong_boleh_none():
-    """salary hanya terisi 18 dari 100 — field opsional tidak boleh bikin gagal."""
+    """salary opsional — sebagian terisi, sebagian tidak; tidak boleh bikin gagal."""
     hasil = baca_dari_file(SAMPLE)
 
     assert any(job.salary for job in hasil)
