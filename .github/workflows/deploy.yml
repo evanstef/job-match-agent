@@ -40,15 +40,28 @@ jobs:
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
-      - uses: docker/build-push-action@v6
+      - name: Build & push API
+        uses: docker/build-push-action@v6
         with:
           context: apps/api
           push: true
           tags: |
             ${{ secrets.DOCKERHUB_USERNAME }}/job-match-api:latest
             ${{ secrets.DOCKERHUB_USERNAME }}/job-match-api:sha-${{ github.sha }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=gha,scope=api
+          cache-to: type=gha,mode=max,scope=api
+      - name: Build & push web
+        uses: docker/build-push-action@v6
+        with:
+          context: apps/web
+          push: true
+          build-args: |
+            NEXT_PUBLIC_API_URL=${{ vars.NEXT_PUBLIC_API_URL }}
+          tags: |
+            ${{ secrets.DOCKERHUB_USERNAME }}/job-match-web:latest
+            ${{ secrets.DOCKERHUB_USERNAME }}/job-match-web:sha-${{ github.sha }}
+          cache-from: type=gha,scope=web
+          cache-to: type=gha,mode=max,scope=web
 
   deploy:
     needs: build-push
@@ -73,6 +86,7 @@ jobs:
           script: |
             cd ~/job-match
             export API_IMAGE=${{ secrets.DOCKERHUB_USERNAME }}/job-match-api:sha-${{ github.sha }}
+            export WEB_IMAGE=${{ secrets.DOCKERHUB_USERNAME }}/job-match-web:sha-${{ github.sha }}
             docker compose --env-file .env -f docker-compose.prod.yml pull
             docker compose --env-file .env -f docker-compose.prod.yml up -d
             docker image prune -f
