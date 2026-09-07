@@ -140,10 +140,10 @@ export default function Beranda() {
               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
               <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
             </span>
-            <h2 className="font-medium">Jalan otomatis 3&times; sehari</h2>
+            <h2 className="font-medium">Jalan otomatis 2&times; sehari</h2>
           </div>
           <p className="mt-1.5 text-sm font-light text-zinc-600 dark:text-zinc-400">
-            Jam 08.00, 15.00, dan 21.00 WIB. Kamu bisa memicunya sekarang untuk
+            Jam 09.00 dan 13.00 WIB. Kamu bisa memicunya sekarang untuk
             melihat hasilnya.
           </p>
 
