@@ -30,6 +30,8 @@ services:
     environment:
       # di dalam compose, DB ada di host "db" port 5432 — bukan localhost:5433
       DATABASE_URL: postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      # scraper ada di jaringan internal compose, bukan localhost
+      SCRAPER_URL: http://scraper:3000
     volumes:
       - model_cache:/app/.model-cache
     ports:
@@ -54,6 +56,51 @@ services:
       retries: 3
       start_period: 20s
       
+  scraper-db:
+    image: postgres:17-alpine
+    container_name: scraper-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: scaper
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: scaper
+    volumes:
+      - scraper_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U scaper -d scaper"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  scraper:
+    image: ${SCRAPER_IMAGE:?set SCRAPER_IMAGE, mis. export SCRAPER_IMAGE=<user>/job-match-scraper:latest}
+    container_name: jobmatch-scraper
+    restart: unless-stopped
+    depends_on:
+      scraper-db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://scaper:${POSTGRES_PASSWORD}@scraper-db:5432/scaper
+      PORT: "3000"
+      API_KEY: ${SCRAPER_API_KEY}
+      CRON_ENABLED: "true"
+      CRON_SCHEDULE: "0 21 * * *"
+      ENRICH_PER_RUN: "6"
+      ENRICH_CRON_SCHEDULE: "0 22-23,0-7 * * *"
+      MAX_UMUR_HARI: "7"
+      # proxy residential (opsional) — isi di .env kalau IP VPS diblokir Cloudflare
+      PROXY_SERVER: ${PROXY_SERVER:-}
+      PROXY_USERNAME: ${PROXY_USERNAME:-}
+      PROXY_PASSWORD: ${PROXY_PASSWORD:-}
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/api/v1/jobs',r=>process.exit(r.statusCode?0:1)).on('error',()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    # tanpa ports → API scraper internal saja, tidak diekspos publik
+
 volumes:
   pgdata:
   model_cache:
+  scraper_pgdata:
