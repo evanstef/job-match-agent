@@ -87,7 +87,9 @@ services:
       API_KEY: ${SCRAPER_API_KEY}
       CRON_ENABLED: "true"
       CRON_SCHEDULE: "0 21 * * *"
-      ENRICH_PER_RUN: "6"
+      # 6 itu warisan era Glints (tiap deskripsi = buka halaman pakai browser).
+      # Semua sumber sekarang JSON API, jadi jauh lebih murah.
+      ENRICH_PER_RUN: "${ENRICH_PER_RUN:-30}"
       ENRICH_CRON_SCHEDULE: "0 22-23,0-7 * * *"
       MAX_UMUR_HARI: "7"
       # proxy residential (opsional) — isi di .env kalau IP VPS diblokir Cloudflare
