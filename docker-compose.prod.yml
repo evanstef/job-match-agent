@@ -32,6 +32,8 @@ services:
       DATABASE_URL: postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
       # scraper ada di jaringan internal compose, bukan localhost
       SCRAPER_URL: http://scraper:3000
+      # bot WA ada di jaringan internal compose
+      WHATSAPP_URL: http://wa-bot:3900
     volumes:
       - model_cache:/app/.model-cache
     ports:
@@ -100,7 +102,27 @@ services:
       start_period: 30s
     # tanpa ports → API scraper internal saja, tidak diekspos publik
 
+  wa-bot:
+    image: ${WA_BOT_IMAGE:?set WA_BOT_IMAGE, mis. export WA_BOT_IMAGE=<user>/personal-bot-whatsapp:latest}
+    container_name: jobmatch-wa-bot
+    restart: unless-stopped
+    environment:
+      PORT: "3900"
+      API_KEY: ${WHATSAPP_API_KEY}
+    volumes:
+      # ⚠️ sesi WhatsApp. Tanpa volume ini tiap deploy = scan QR ulang.
+      - wa_session:/app/.wwebjs_auth
+    healthcheck:
+      # cuma memastikan layanannya hidup — "healthy" BUKAN berarti sudah tertaut
+      test: ["CMD", "bun", "-e", "fetch('http://localhost:3900/status').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
+    # tanpa ports → cuma bisa dihubungi api lewat jaringan internal
+
 volumes:
   pgdata:
   model_cache:
   scraper_pgdata:
+  wa_session:
