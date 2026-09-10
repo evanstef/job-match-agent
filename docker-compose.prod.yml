@@ -111,10 +111,10 @@ services:
       API_KEY: ${WHATSAPP_API_KEY}
     volumes:
       # ⚠️ sesi WhatsApp. Tanpa volume ini tiap deploy = scan QR ulang.
-      - wa_session:/app/.wwebjs_auth
+      - wa_auth:/app/.baileys_auth
     healthcheck:
       # cuma memastikan layanannya hidup — "healthy" BUKAN berarti sudah tertaut
-      test: ["CMD", "bun", "-e", "fetch('http://localhost:3900/status').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      test: ["CMD", "node", "-e", "fetch('http://localhost:3900/status').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
       interval: 30s
       timeout: 5s
       retries: 3
@@ -125,4 +125,4 @@ volumes:
   pgdata:
   model_cache:
   scraper_pgdata:
-  wa_session:
+  wa_auth:
