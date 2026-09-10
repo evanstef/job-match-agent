@@ -88,6 +88,7 @@ jobs:
             export API_IMAGE=${{ secrets.DOCKERHUB_USERNAME }}/job-match-api:sha-${{ github.sha }}
             export WEB_IMAGE=${{ secrets.DOCKERHUB_USERNAME }}/job-match-web:sha-${{ github.sha }}
             export SCRAPER_IMAGE=${{ secrets.DOCKERHUB_USERNAME }}/job-match-scraper:latest
+            export WA_BOT_IMAGE=${{ secrets.DOCKERHUB_USERNAME }}/personal-bot-whatsapp:latest
             # cuma urus service milik repo ini; scraper diurus repo job-scraper-api
             docker compose --env-file .env -f docker-compose.prod.yml pull api web
             docker compose --env-file .env -f docker-compose.prod.yml up -d db api web
