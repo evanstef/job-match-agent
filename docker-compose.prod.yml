@@ -102,7 +102,7 @@ services:
       timeout: 5s
       retries: 3
       start_period: 30s
-    # tanpa ports → API scraper internal saja, tidak diekspos publik
+    # jaringan internal saja, tidak diekspos publik
 
   wa-bot:
     image: ${WA_BOT_IMAGE:?set WA_BOT_IMAGE, mis. export WA_BOT_IMAGE=<user>/personal-bot-whatsapp:latest}
