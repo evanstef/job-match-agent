@@ -64,7 +64,8 @@ services:
     restart: unless-stopped
     environment:
       POSTGRES_USER: scaper
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      # password sendiri, TIDAK berbagi dengan jobmatch-db yang menyimpan CV & akun
+      POSTGRES_PASSWORD: ${SCRAPER_DB_PASSWORD:?set SCRAPER_DB_PASSWORD di .env}
       POSTGRES_DB: scaper
     volumes:
       - scraper_pgdata:/var/lib/postgresql/data
@@ -82,7 +83,7 @@ services:
       scraper-db:
         condition: service_healthy
     environment:
-      DATABASE_URL: postgresql://scaper:${POSTGRES_PASSWORD}@scraper-db:5432/scaper
+      DATABASE_URL: postgresql://scaper:${SCRAPER_DB_PASSWORD}@scraper-db:5432/scaper
       PORT: "3000"
       API_KEY: ${SCRAPER_API_KEY}
       CRON_ENABLED: "true"
