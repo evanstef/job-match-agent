@@ -98,7 +98,7 @@ services:
       timeout: 5s
       retries: 3
       start_period: 30s
-    # tanpa ports → API scraper internal saja, tidak diekspos publik
+    # jaringan internal saja, tidak diekspos publik
 
 volumes:
   pgdata:
