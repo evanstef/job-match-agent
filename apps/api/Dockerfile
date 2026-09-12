@@ -24,6 +24,9 @@ WORKDIR /app
 COPY --from=builder --chown=app:app /app /app
 COPY --chown=app:app entrypoint.sh /app/entrypoint.sh
 RUN chmod +x /app/entrypoint.sh
+# Folder cache harus ADA dan dimiliki app SEBELUM volume dipasang. Kalau belum ada,
+# Docker membuatnya sebagai root dan fastembed gagal mengunduh model (Permission denied).
+RUN mkdir -p /app/.model-cache && chown app:app /app/.model-cache
 ENV PATH="/app/.venv/bin:$PATH" PYTHONUNBUFFERED=1 MODEL_CACHE_DIR=/app/.model-cache
 USER app
 EXPOSE 8010
