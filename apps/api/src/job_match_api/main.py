@@ -1,3 +1,4 @@
+import logging
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
@@ -8,6 +9,13 @@ from job_match_api import penjadwal
 from job_match_api.api import auth, cv, lowongan, pencocokan, preferensi, saya
 from job_match_api.api.errors import pasang_error_handler
 from job_match_api.config import settings
+
+# uvicorn hanya mengatur logger miliknya sendiri; tanpa ini seluruh logger.info()
+# dari kode aplikasi hilang tanpa jejak — termasuk hasil tiap putaran penjadwal.
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s [%(name)s] %(message)s",
+)
 
 
 @asynccontextmanager
