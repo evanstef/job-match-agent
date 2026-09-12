@@ -9,7 +9,7 @@ from job_match_api.db.repository import ambil_user_siap
 from job_match_api.db.session import SessionLocal
 from job_match_api.pengaya import lengkapi
 from job_match_api.pengisi import isi_vektor
-from job_match_api.pengumpul import tarik, tarik_glints
+from job_match_api.pengumpul import tarik, tarik_scraper
 from job_match_api.putaran import jalankan_dan_kirim
 
 logger = logging.getLogger(__name__)
@@ -37,16 +37,16 @@ _penjadwal = BackgroundScheduler(timezone=ZONA)
 def _isi_kolam(db: Session) -> None:
     """Dua langkah pengisi bahan sebelum penilaian: tarik dari scraper, hitung vektor."""
     try:
-        hasil = tarik_glints(db)
+        hasil = tarik_scraper(db)
         logger.info(
-            "Tarik Glints: %s dibaca, %s baru (%s)",
+            "Tarik scraper: %s dibaca, %s baru (%s)",
             hasil.dibaca,
             hasil.baru,
             ", ".join(hasil.kata_kunci),
         )
     except Exception:
         # penarikan gagal bukan alasan melewatkan penilaian — lowongan lama masih ada
-        logger.exception("Penarikan Glints gagal")
+        logger.exception("Penarikan dari scraper gagal")
 
     try:
         hasil = isi_vektor(db)
@@ -61,14 +61,14 @@ def _isi_kolam(db: Session) -> None:
 
 
 def _isi_kolam_jooble(db: Session) -> None:
-    """LEGACY — tidak dipanggil sejak 23 Agu 2026, digantikan scraper Glints.
+    """LEGACY — tidak dipanggil sejak 23 Agu 2026, digantikan scraper sendiri.
 
     Dibiarkan sebagai fungsi utuh, bukan dikomentari, supaya tetap ikut diperiksa
     lint dan tidak diam-diam basi kalau tanda tangan tarik() atau lengkapi()
     berubah. Menghidupkannya lagi cukup dengan memanggilnya dari _isi_kolam.
 
     lengkapi() ikut dimatikan di sini karena hanya melayani baris Jooble:
-    antreannya disaring ke sumber ATS, sedangkan lowongan Glints sudah membawa
+    antreannya disaring ke sumber ATS, sedangkan lowongan scraper sudah membawa
     isi lengkapnya sendiri sejak masuk.
 
     ⚠️ Kalau dihidupkan lagi, ingat urutannya: isi_vektor menghitung vektor dari
