@@ -95,4 +95,5 @@ jobs:
             # -a: buang image bertag yang tak dipakai container, bukan cuma yang dangling.
             # Tanpa -a, tiap deploy menumpuk image lama selamanya (prune-nya nol sasaran).
             # Versi lama tetap ada di Docker Hub, jadi rollback masih bisa lewat pull.
-            docker image prune -af
+            # kegagalan bersih-bersih tidak boleh menjatuhkan deploy yang sudah sukses
+            docker image prune -af || true
