@@ -5,9 +5,9 @@ from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
 from job_match_api.db.models import Cv, Lowongan, LowonganTerkirim, Preferensi, User
-from job_match_api.sources.glints import GlintsJob
 from job_match_api.sources.jooble import PENARIK as PENARIK_JOOBLE
 from job_match_api.sources.jooble import JoobleJob
+from job_match_api.sources.scraper import ScraperJob
 
 # Batas jarak kosinus CV -> lowongan. Menggantikan aturan cocok-cocokan kata yang
 # dulu ada di saring_kasar. Diukur 2026-08-19: di bawah 0,60 masih bidang teknis,
@@ -65,7 +65,7 @@ def simpan_preferensi(
 
 
 def simpan_lowongan(
-    db: Session, jobs: list[JoobleJob] | list[GlintsJob], penarik: str = PENARIK_JOOBLE
+    db: Session, jobs: list[JoobleJob] | list[ScraperJob], penarik: str = PENARIK_JOOBLE
 ) -> int:
     if not jobs:
         return 0
