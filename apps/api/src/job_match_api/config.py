@@ -35,6 +35,15 @@ class Settings(BaseSettings):
     # mati secara default supaya menjalankan API di laptop tidak ikut mengirim pesan
     penjadwal_aktif: bool = False
 
+    # Jam putaran harian, dipisah koma ("9" atau "9,13"). Zona Asia/Jakarta,
+    # dipatok di penjadwal — server jalan di UTC, "9" polos berarti 16.00 WIB.
+    jam_putaran: str = "9"
+
+    # Dipatok kuota Groq gratis (200.000 token/hari), bukan selera. Satu penilaian
+    # = ULANGAN 3 panggilan x ~3.880 token = 11.640. Jadi 17 penilaian sehari itu
+    # langit-langitnya; angka ini dibagi rata ke jumlah putaran di jam_putaran.
+    maks_dinilai: int = 10
+
     # asal frontend yang boleh membawa cookie. Dipisah koma kalau lebih dari satu.
     # WAJIB alamat spesifik — "*" ditolak browser kalau request-nya membawa kredensial
     frontend_url: str = "http://localhost:3010"
