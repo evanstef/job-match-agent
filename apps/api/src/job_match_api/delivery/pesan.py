@@ -18,17 +18,23 @@ def _satu(nomor: int, low: LowonganTerpilih) -> str:
 
 
 def susun_pesan(terpilih: list[LowonganTerpilih]) -> str:
-    """Ubah daftar lowongan terpilih jadi teks siap kirim. Tidak tahu kanalnya apa.
-
-    Skor sengaja tidak ikut. Dia alat pengurut di dalam kode, bukan penilaian yang
-    layak dibaca orang: lowongan yang sama diukur berkali-kali menghasilkan
-    36/76/36/56/56, jadi menampilkan angkanya menjanjikan ketelitian yang tidak ada.
-    Ringkasan per dimensi ikut ditanggalkan — yang menentukan mau dilamar atau tidak
-    adalah posisi, tempat, dan iklannya sendiri.
-    """
     if not terpilih:
         return "Belum ada lowongan yang cocok putaran ini."
 
     kepala = f"{len(terpilih)} lowongan cocok buat kamu:"
     isi = "\n\n".join(_satu(i, low) for i, low in enumerate(terpilih, start=1))
     return f"{kepala}\n\n{isi}"
+
+
+def susun_kabar_kosong(kandidat: int, dinilai: int, gagal: int) -> str:
+    baris = ["Tidak ada lowongan yang cukup cocok putaran ini."]
+
+    if kandidat:
+        baris.append(f"Disaring {kandidat} kandidat, {dinilai} dinilai.")
+    else:
+        baris.append("Belum ada lowongan baru yang layak dinilai.")
+
+    if gagal:
+        baris.append(f"{gagal} gagal dinilai.")
+
+    return "\n".join(baris)

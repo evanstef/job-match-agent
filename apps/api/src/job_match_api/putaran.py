@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 from job_match_api.config import settings
 from job_match_api.db.models import User
 from job_match_api.db.repository import tandai_terkirim
-from job_match_api.delivery.pesan import susun_pesan
+from job_match_api.delivery.pesan import susun_kabar_kosong, susun_pesan
 from job_match_api.delivery.whatsapp import KurirError, kirim
 from job_match_api.pipeline import HasilJalan, jalankan
 
@@ -22,7 +22,17 @@ def _tujuan(db: Session, user_id: int) -> str:
 def jalankan_dan_kirim(db: Session, user_id: int, maks_dinilai: int = 10) -> HasilJalan:
     """Satu putaran penuh: nilai lowongan, kirim yang layak, tandai yang sudah terkirim."""
     hasil = jalankan(db, user_id, maks_dinilai)
+
+    # Tidak ada yang lolos pun tetap berkabar. Kalau agent cuma bersuara saat ada
+    # hasil, sunyi jadi ambigu — tidak cocok, mati, atau gagal kirim tanpa suara.
     if not hasil.terpilih:
+        try:
+            kirim(
+                _tujuan(db, user_id),
+                susun_kabar_kosong(hasil.kandidat, hasil.dinilai, hasil.gagal),
+            )
+        except KurirError as e:
+            logger.warning("Gagal mengirim kabar kosong: %s", e)
         return hasil
 
     try:
