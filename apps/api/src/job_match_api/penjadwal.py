@@ -14,17 +14,10 @@ from job_match_api.putaran import jalankan_dan_kirim
 
 logger = logging.getLogger(__name__)
 
-# WAJIB dipatok: server jalan di UTC, hour="9" polos berarti 16.00 WIB
-JAM = "9,13"
+# WAJIB dipatok: server jalan di UTC, hour="9" polos berarti 16.00 WIB.
+# Jamnya sendiri (jam_putaran) dan jatah penilaian (maks_dinilai) pindah ke .env
+# supaya bisa disetel tanpa menyentuh kode — lihat config.py untuk batas kuotanya.
 ZONA = "Asia/Jakarta"
-
-# Dipatok kuota, bukan selera: Groq gratis 200.000 token/hari. Satu penilaian =
-# ULANGAN=3 panggilan x 3.880 token (rata-rata hasil ukur 25 Agu) = 11.640.
-# 200.000 / 11.640 = 17 penilaian sehari, dibagi 2 putaran = 8.
-# Angka 20 lalu 15 yang pernah dipakai di sini berdiri di atas perkiraan ~2.000
-# token per panggilan yang ternyata meleset dua kali lipat. Yang kepotong adalah
-# yang paling jauh dari CV.
-MAKS_DINILAI = 8
 
 # Hanya dipakai jalur Jooble (_isi_kolam_jooble). 100 lowongan per halaman;
 # berapa banyak yang benar-benar tertarik dibatasi MAKS_PERMINTAAN di pengumpul,
@@ -109,7 +102,7 @@ def _putaran_semua_user() -> None:
 
         for pengguna in ambil_user_siap(db):
             try:
-                hasil = jalankan_dan_kirim(db, pengguna.id, MAKS_DINILAI)
+                hasil = jalankan_dan_kirim(db, pengguna.id, settings.maks_dinilai)
                 logger.info(
                     "User %s: %s kandidat, %s dinilai, %s gagal, %s terkirim",
                     pengguna.id,
@@ -132,12 +125,17 @@ def mulai() -> None:
 
     _penjadwal.add_job(
         _putaran_semua_user,
-        CronTrigger(hour=JAM, timezone=ZONA),
+        CronTrigger(hour=settings.jam_putaran, timezone=ZONA),
         id="putaran-harian",
         replace_existing=True,
     )
     _penjadwal.start()
-    logger.info("Penjadwal hidup — jam %s %s", JAM, ZONA)
+    logger.info(
+        "Penjadwal hidup — jam %s %s, maks %s dinilai per putaran",
+        settings.jam_putaran,
+        ZONA,
+        settings.maks_dinilai,
+    )
 
 
 def berhenti() -> None:
