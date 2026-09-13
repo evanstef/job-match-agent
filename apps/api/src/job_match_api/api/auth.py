@@ -1,9 +1,10 @@
 import logging
 
-from fastapi import APIRouter, HTTPException, Response
+from fastapi import APIRouter, HTTPException, Request, Response
 from pydantic import BaseModel
 
 from job_match_api.api.errors import respons_error
+from job_match_api.api.pembatas import batasi
 from job_match_api.auth import (
     MASA_BERLAKU_HARI,
     AuthError,
@@ -20,6 +21,12 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 MIN_PASSWORD = 8
+
+# Dipakai saat email tidak ditemukan, supaya bcrypt tetap berjalan dan waktu
+# responsnya sama dengan jalur "email ada". Tanpa ini pesan errornya memang
+# seragam, tapi SELISIH WAKTUNYA membocorkan email mana yang terdaftar:
+# terukur 84-196 ms (tidak ada) vs 428-464 ms (ada).
+_HASH_UMPAN = hash_password("bukan-password-siapa-siapa")
 NAMA_COOKIE = "token"
 UMUR_COOKIE = MASA_BERLAKU_HARI * 24 * 60 * 60
 
@@ -45,8 +52,11 @@ def _pasang_cookie(respons: Response, token: str) -> None:
 
 
 @router.post("/daftar", responses=respons_error((409, "Email sudah terdaftar")))
-def daftar(kredensial: Kredensial, respons: Response, db: DbSession) -> TokenOut:
+def daftar(
+    kredensial: Kredensial, request: Request, respons: Response, db: DbSession
+) -> TokenOut:
     """Bikin akun baru, langsung dapat token."""
+    batasi(request, "daftar")
     email = kredensial.email.strip().lower()
     if not email or "@" not in email:
         raise HTTPException(400, "Email tidak sah")
@@ -68,14 +78,21 @@ def daftar(kredensial: Kredensial, respons: Response, db: DbSession) -> TokenOut
 
 
 @router.post("/masuk", responses=respons_error((401, "Email atau password salah")))
-def masuk(kredensial: Kredensial, respons: Response, db: DbSession) -> TokenOut:
+def masuk(
+    kredensial: Kredensial, request: Request, respons: Response, db: DbSession
+) -> TokenOut:
     """Tukar email + password dengan token."""
+    batasi(request, "masuk")
+
     email = kredensial.email.strip().lower()
     user = cari_user_by_email(db, email)
 
     # alasan aslinya cuma ke log — pesan ke pengguna sengaja sama supaya
     # tidak bisa dipakai menebak email mana yang terdaftar
     if user is None:
+        # bcrypt tetap dijalankan atas hash umpan: tanpa ini fungsi pulang jauh
+        # lebih cepat, dan selisih waktunya membocorkan email mana yang ada
+        cocok_password(kredensial.password, _HASH_UMPAN)
         logger.info("Gagal masuk: email %s tidak terdaftar", email)
         raise HTTPException(401, "Email atau password salah")
     if not cocok_password(kredensial.password, user.password_hash):

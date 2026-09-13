@@ -129,6 +129,9 @@ def pasang_error_handler(app: FastAPI) -> None:
         return JSONResponse(
             status_code=exc.status_code,
             content={"sukses": False, "errors": [str(exc.detail)]},
+            # header dari exception ikut dibawa; tanpa ini Retry-After pada 429
+            # hilang dan pemanggil tidak tahu harus menunggu berapa lama
+            headers=exc.headers,
         )
 
     @app.exception_handler(Exception)
