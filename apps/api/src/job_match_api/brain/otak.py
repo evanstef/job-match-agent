@@ -1,4 +1,5 @@
 import re
+import statistics
 import time
 from collections import Counter
 from typing import Literal
@@ -32,11 +33,10 @@ ULANGAN = 3
 # jarak minimumnya 60 / (12.000 / 4.196) = 21 detik. Jeda 15 detik yang dipakai
 # semula membuat 8 dari 9 panggilan ditolak lalu diulang SDK.
 JEDA_ULANGAN_DETIK = 25
-# Langit-langit panjang jawaban. Dari 11 pengukuran 25-26 Agu, jawaban sah terpanjang
-# 1.828 token — tapi satu panggilan pernah mengoceh sampai 3.072 dan justru cuma
-# mengeluarkan 3 kotak dari 5. Batas ini memotong ekor itu; jawaban yang kepotong jadi
-# JSON rusak lalu gugur sebagai satu suara, dan _suara masih jalan dengan dua sisanya.
-MAKS_TOKEN_JAWABAN = 2500
+# Langit-langit panjang jawaban, menahan model mengoceh (pernah 3.072 token tapi cuma
+# mengeluarkan 3 dimensi dari 5). Dinaikkan 2.500 -> 4.000 krn rubrik cacah butuh 2.609;
+# di 2.500 jawaban keluar KOSONG dan Groq membalas 400 json_validate_failed.
+MAKS_TOKEN_JAWABAN = 4000
 
 INSTRUKSI = """Kamu penilai lowongan kerja. Jawab LIMA pertanyaan, tidak lebih dan
 tidak kurang — satu untuk tiap dimensi, berurutan seperti di bawah. Balas JSON
@@ -44,11 +44,11 @@ dengan bentuk persis ini:
 
 {
   "syarat": [
-    {"dimensi": "peran", "teks": "...", "vonis": "...", "bukti": "..."},
-    {"dimensi": "keterampilan", "teks": "...", "vonis": "...", "bukti": "..."},
-    {"dimensi": "senioritas", "teks": "...", "vonis": "...", "bukti": "..."},
-    {"dimensi": "pendidikan", "teks": "...", "vonis": "...", "bukti": "..."},
-    {"dimensi": "lokasi", "teks": "...", "vonis": "...", "bukti": "..."}
+    {"dimensi": "peran", "teks": "...", "vonis": "...", "bukti": "...", "diminta": 0, "terpenuhi": 0},
+    {"dimensi": "keterampilan", "teks": "...", "vonis": "...", "bukti": "...", "diminta": 0, "terpenuhi": 0},
+    {"dimensi": "senioritas", "teks": "...", "vonis": "...", "bukti": "...", "diminta": 0, "terpenuhi": 0},
+    {"dimensi": "pendidikan", "teks": "...", "vonis": "...", "bukti": "...", "diminta": 0, "terpenuhi": 0},
+    {"dimensi": "lokasi", "teks": "...", "vonis": "...", "bukti": "...", "diminta": 0, "terpenuhi": 0}
   ]
 }
 
@@ -68,6 +68,15 @@ vonis:
 - cocok = terpenuhi. WAJIB isi "bukti" berupa kutipan baris dari CV
 - tidak cocok = tidak terpenuhi
 - tidak kebaca = iklan tidak menyebut, atau CV tidak menyinggung
+
+"diminta" dan "terpenuhi" = CACAH, bukan vonis. Hitung berapa hal yang iklan minta
+pada dimensi itu, lalu berapa di antaranya yang ada di CV. Contoh: iklan minta
+React, Node, Docker, Rust; CV punya tiga yang pertama -> "diminta": 4,
+"terpenuhi": 3. Kalau dimensinya tidak bisa dicacah atau iklan tidak menyebut
+apa-apa, isi 0 dan 0.
+
+Angka ini yang membedakan "hampir semua terpenuhi" dari "tidak satu pun" —
+dua-duanya bervonis "tidak cocok", jadi tanpa cacah keduanya terbaca sama.
 
 Aturan yang tidak boleh dilanggar:
 - Yang ditarik hanya SYARAT, yaitu yang diminta DARI pelamar. Daftar tanggung
@@ -107,6 +116,11 @@ class Syarat(BaseModel):
     vonis: Vonis
     bukti: str | None = None
     sifat: Sifat = "lunak"
+    # Cacah syarat pada dimensi ini dan berapa yang terpenuhi. 0/0 = tak tercacah.
+    # Dipakai _skor untuk memisahkan "4 dari 5" dari "0 dari 5" — keduanya bervonis
+    # "tidak cocok", dan tanpa angka ini sampai ke penghitung sebagai hal yang sama.
+    diminta: int = 0
+    terpenuhi: int = 0
 
     @model_validator(mode="after")
     def _sifat_dari_dimensi(self) -> "Syarat":
@@ -178,13 +192,26 @@ def _vonis_akhir(syarat: list[Syarat]) -> VonisAkhir:
     return "PERTIMBANGKAN"
 
 
+def _bobot_satu(s: Syarat) -> float:
+    """Bobot satu dimensi lunak. Pakai cakupan kalau tercacah, kalau tidak jatuh ke vonis.
+
+    Vonis cuma punya tiga nilai, jadi "4 dari 5 terpenuhi" dan "0 dari 5" sama-sama
+    jadi "tidak cocok" lalu bernilai 0. Cakupan mengembalikan bedanya: 0,8 vs 0,0.
+    Dimensi yang tak tercacah (diminta=0) tetap memakai bobot vonis seperti semula.
+    """
+    # "tidak kebaca" berarti iklan tidak menyebut apa pun — cacahnya tak bermakna
+    if s.vonis == "tidak kebaca" or s.diminta <= 0:
+        return BOBOT[s.vonis]
+    return min(1.0, max(0.0, s.terpenuhi / s.diminta))
+
+
 def _skor(syarat: list[Syarat]) -> int:
     """Angka 0-100 untuk mengurutkan. Rubrik hanya menentukan vonis, bukan urutan."""
     if _gagal_keras_mutlak(syarat):
         return 0
 
     lunak = [s for s in syarat if s.sifat == "lunak"]
-    bobot = sum(BOBOT[s.vonis] for s in lunak) + BUKTI_SEMU * BOBOT["tidak kebaca"]
+    bobot = sum(_bobot_satu(s) for s in lunak) + BUKTI_SEMU * BOBOT["tidak kebaca"]
     dasar = 100 * bobot / (len(lunak) + BUKTI_SEMU)
 
     potongan = POTONGAN_KERAS_BERSYARAT * sum(
@@ -403,7 +430,16 @@ def _suara(jawaban: list[_JawabanLLM]) -> list[Syarat]:
 
         # teks & bukti ikut jawaban yang vonisnya menang — jangan diambil dari
         # jawaban yang kalah, nanti "cocok" membawa bukti milik "tidak cocok"
-        hasil.append(next(s for s in kotak if s.vonis == menang))
+        terpilih = next(s for s in kotak if s.vonis == menang)
+
+        # Cacahnya diambil nilai TENGAH dari semua yang sevonis, bukan dari satu
+        # jawaban saja — satu panggilan yang salah hitung tidak menyeret skornya.
+        sevonis = [x for x in kotak if x.vonis == menang and x.diminta > 0]
+        if sevonis:
+            terpilih.diminta = statistics.median_low(x.diminta for x in sevonis)
+            terpilih.terpenuhi = statistics.median_low(x.terpenuhi for x in sevonis)
+
+        hasil.append(terpilih)
 
     return hasil
 
