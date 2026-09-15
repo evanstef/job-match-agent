@@ -17,13 +17,21 @@ def _satu(nomor: int, low: LowonganTerpilih) -> str:
     return "\n".join(baris)
 
 
-def susun_pesan(terpilih: list[LowonganTerpilih]) -> str:
+def susun_pesan(terpilih: list[LowonganTerpilih], gagal: int = 0) -> str:
     if not terpilih:
         return "Belum ada lowongan yang cocok putaran ini."
 
     kepala = f"{len(terpilih)} lowongan cocok buat kamu:"
     isi = "\n\n".join(_satu(i, low) for i, low in enumerate(terpilih, start=1))
-    return f"{kepala}\n\n{isi}"
+    pesan = f"{kepala}\n\n{isi}"
+
+    # Lowongan yang gagal dinilai dibuang senyap sebelumnya — putaran tetap
+    # "sukses" walau ada yang hilang. Catatan ini yang membuat kehilangan itu
+    # terlihat tanpa harus mengintip log server.
+    if gagal:
+        pesan += f"\n\n⚠️ {gagal} lowongan gagal dinilai, tidak ikut terkirim."
+
+    return pesan
 
 
 def susun_kabar_kosong(kandidat: int, dinilai: int, gagal: int) -> str:

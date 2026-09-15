@@ -36,7 +36,7 @@ def jalankan_dan_kirim(db: Session, user_id: int, maks_dinilai: int = 10) -> Has
         return hasil
 
     try:
-        kirim(_tujuan(db, user_id), susun_pesan(hasil.terpilih))
+        kirim(_tujuan(db, user_id), susun_pesan(hasil.terpilih, hasil.gagal))
     except KurirError as e:
         # penilaiannya sudah tercatat; yang gagal cuma pengirimannya, jadi bisa dicoba lagi nanti
         logger.warning("Gagal mengirim %s lowongan: %s", len(hasil.terpilih), e)
