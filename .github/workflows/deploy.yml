@@ -91,5 +91,5 @@ jobs:
             export WA_BOT_IMAGE=${{ secrets.DOCKERHUB_USERNAME }}/personal-bot-whatsapp:latest
             # cuma urus service milik repo ini; scraper diurus repo job-scraper-api
             docker compose --env-file .env -f docker-compose.prod.yml pull api web
-            docker compose --env-file .env -f docker-compose.prod.yml up -d db api web
+            docker compose --env-file .env -f docker-compose.prod.yml up -d db api web caddy
             docker image prune -af || true
