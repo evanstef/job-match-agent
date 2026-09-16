@@ -56,8 +56,7 @@ services:
       WHATSAPP_TUJUAN: ${WHATSAPP_TUJUAN}
     volumes:
       - model_cache:/app/.model-cache
-    ports:
-      - "8010:8010"   # publik sementara (belum ada domain); ganti Caddy+HTTPS nanti
+    # tanpa ports publik — diakses lewat Caddy (api.jobmatch...) via jaringan internal
     healthcheck:
       test: ["CMD-SHELL", "python -c \"import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8010/health').status==200 else 1)\""]
       interval: 30s
@@ -69,8 +68,7 @@ services:
     image: ${WEB_IMAGE:?set WEB_IMAGE, mis. export WEB_IMAGE=<user>/job-match-web:latest}
     container_name: jobmatch-web
     restart: unless-stopped
-    ports:
-      - "3010:3000"
+    # tanpa ports publik — diakses lewat Caddy (jobmatch...) via jaringan internal
     healthcheck:
       test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000',r=>process.exit(r.statusCode<500?0:1)).on('error',()=>process.exit(1))"]
       interval: 30s
