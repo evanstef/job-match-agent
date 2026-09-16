@@ -147,8 +147,25 @@ services:
       start_period: 60s
     # tanpa ports → cuma bisa dihubungi api lewat jaringan internal
 
+  caddy:
+    image: caddy:2
+    container_name: jobmatch-caddy
+    restart: unless-stopped
+    depends_on:
+      - web
+      - api
+    ports:
+      - "80:80"     # challenge Let's Encrypt + redirect http→https
+      - "443:443"   # HTTPS publik
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data       # ⭐ sertifikat disimpan di sini — jangan sampai hilang
+      - caddy_config:/config
+
 volumes:
   pgdata:
   model_cache:
   scraper_pgdata:
   wa_auth:
+  caddy_data:
+  caddy_config:
