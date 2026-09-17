@@ -2,7 +2,7 @@
 
 import { AnimatePresence, motion } from "motion/react";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
 import { api, minta, pesanError } from "@/lib/api";
@@ -29,6 +29,13 @@ export default function Masuk() {
   const [password, setPassword] = useState("");
   const [salah, setSalah] = useState<Record<string, string>>({});
   const [sibuk, setSibuk] = useState(false);
+
+  useEffect(() => {
+    // sudah login? jangan tampilkan halaman masuk — lempar ke dalam
+    minta(skemaSaya, () => api.get("/auth/saya"))
+      .then((saya) => router.replace(saya.punya_cv ? "/beranda" : "/onboarding"))
+      .catch(() => {}); // belum login → biarkan di halaman masuk
+  }, [router]);
 
   function periksa(nama: string, nilai: unknown) {
     const skema = daftar ? skemaDaftar : skemaMasuk;

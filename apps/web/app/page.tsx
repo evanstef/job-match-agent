@@ -16,7 +16,7 @@ const LANGKAH = [
   },
   {
     judul: "Tunggu di WhatsApp",
-    isi: "Dua kali sehari — 09.00, 13.00. Kalau tidak ada yang cocok, tidak ada yang dikirim.",
+    isi: "Sekali sehari — 09.00. Kalau tidak ada yang cocok, tidak ada yang dikirim.",
   },
 ];
 
