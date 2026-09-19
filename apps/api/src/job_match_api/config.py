@@ -44,6 +44,10 @@ class Settings(BaseSettings):
     # langit-langitnya; angka ini dibagi rata ke jumlah putaran di jam_putaran.
     maks_dinilai: int = 10
 
+    # Berapa kali tiap lowongan dinilai lalu disuarakan buat meredam goyangan LLM.
+    # Ganjil (3/5); 1 = tanpa voting (hemat 3x token, tapi job mepet bisa lempar-koin).
+    ulangan: int = 3
+
     # asal frontend yang boleh membawa cookie. Dipisah koma kalau lebih dari satu.
     # WAJIB alamat spesifik — "*" ditolak browser kalau request-nya membawa kredensial
     frontend_url: str = "http://localhost:3010"

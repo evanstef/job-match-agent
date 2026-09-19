@@ -27,7 +27,7 @@ BUKTI_SEMU = 2
 MAKS_PERCOBAAN = 5
 # Masukan yang sama bisa dijawab beda; jawabannya disuarakan di _suara. Ganjil,
 # supaya mayoritas bisa terbentuk tanpa seri.
-ULANGAN = 3
+ULANGAN = settings.ulangan
 # Diukur 25 Agu, bukan diperkirakan: satu panggilan 3.703-4.196 token (prompt
 # 2.298-2.873 + jawaban 1.090-1.442). Pagu Groq gratis 12.000 token/menit, jadi
 # jarak minimumnya 60 / (12.000 / 4.196) = 21 detik. Jeda 15 detik yang dipakai
