@@ -1,6 +1,8 @@
 # rahasia
 .env
 .env.local
+.env.bak*
+*.bak
 *.key
 
 # data mentah dari API pihak ketiga — dipakai lokal, jangan dipublikasikan

@@ -103,6 +103,11 @@ class Lowongan(Base):
     isi_lengkap: Mapped[str | None] = mapped_column(Text)
     isi_lengkap_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
+    # daftar syarat lowongan, diekstrak SEKALI lalu dipakai ulang tiap penilaian —
+    # mengunci penyebut skor (terpenuhi/jumlah syarat) supaya tak goyang antar-run
+    syarat: Mapped[list | None] = mapped_column(JSONB)
+    syarat_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
     embedding: Mapped[list[float] | None] = mapped_column(Vector(EMBEDDING_DIM))
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), index=True

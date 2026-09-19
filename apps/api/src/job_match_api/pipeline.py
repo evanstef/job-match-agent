@@ -4,7 +4,7 @@ import time
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
-from job_match_api.brain.otak import Hasil, OtakError, Preferensi, nilai
+from job_match_api.brain.otak import Hasil, OtakError, Preferensi, ekstrak_syarat, nilai
 from job_match_api.brain.saring import saring_kasar
 from job_match_api.cv.profil import ProfilCv
 from job_match_api.db.models import Cv, Lowongan, User
@@ -12,6 +12,7 @@ from job_match_api.db.repository import (
     ambil_cv_terbaru,
     ambil_lowongan_belum_dinilai,
     catat_penilaian,
+    simpan_syarat,
     simpan_vektor_cv,
 )
 from job_match_api.vektor import VektorError, dari_profil
@@ -122,6 +123,11 @@ def jalankan(db: Session, user_id: int, maks_dinilai: int = 10) -> HasilJalan:
         if urutan:
             time.sleep(JEDA_DETIK)
         try:
+            # ekstrak syarat sekali per lowongan, disimpan & dipakai lintas user
+            if low.syarat is None:
+                syarat = [s.model_dump() for s in ekstrak_syarat(low, low.isi_lengkap)]
+                simpan_syarat(db, low.id, syarat)
+                low.syarat = syarat
             hasil = nilai(
                 cv.teks_mentah, pref, low, low.isi_lengkap, profil.peran, profil.pendidikan
             )

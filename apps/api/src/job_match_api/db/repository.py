@@ -179,6 +179,16 @@ def catat_penilaian(db: Session, user_id: int, penilaian: Iterable[tuple[int, st
     return len(hasil)
 
 
+# simpan daftar syarat lowongan — diekstrak sekali, dipakai lintas user
+def simpan_syarat(db: Session, lowongan_id: int, syarat: list[dict]) -> None:
+    db.execute(
+        update(Lowongan)
+        .where(Lowongan.id == lowongan_id)
+        .values(syarat=syarat, syarat_at=func.now())
+    )
+    db.commit()
+
+
 # lowongan yang isinya belum pernah diambil, dan sumbernya masih mungkin diambil
 def ambil_lowongan_tanpa_isi(db: Session, sumber: list[str], batas: int) -> list[Lowongan]:
     stmt = (
