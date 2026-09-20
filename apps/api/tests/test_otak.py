@@ -4,6 +4,7 @@ import pytest
 
 from job_match_api.brain import otak
 from job_match_api.brain.otak import (
+    AMBANG_LAMAR,
     BOBOT,
     BUKTI_SEMU,
     JARAK_PERAN_MAKS,
@@ -87,17 +88,26 @@ def test_tidak_kebaca_dihargai_lebih_tinggi_dari_tidak_cocok():
     assert buta > diperiksa
 
 
-def test_vonis_akhir_lamar_kalau_mayoritas_lunak_cocok():
-    assert _vonis_akhir(_syarat(peran="cocok", keterampilan="cocok")) == "LAMAR"
+def test_vonis_akhir_lamar_ikut_skor_bukan_cacah_cocok():
+    """LAMAR ditentukan skor, bukan lagi mayoritas dimensi 'cocok'. Dimensi yang
+    sama 'cocok' bisa LAMAR atau PERTIMBANGKAN tergantung skor lolos ambang atau tidak
+    — inilah yang menahan junior tembus posisi senior (skornya di bawah ambang)."""
+    syarat = _syarat(peran="cocok", keterampilan="cocok")
+    assert _vonis_akhir(syarat, AMBANG_LAMAR) == "LAMAR"
+    assert _vonis_akhir(syarat, AMBANG_LAMAR - 1) == "PERTIMBANGKAN"
 
 
 def test_vonis_akhir_skip_kalau_keras_mutlak_gagal():
-    """pendidikan satu-satunya keras mutlak; SKIP tidak bisa diselamatkan urutan."""
-    assert _vonis_akhir(_syarat(peran="cocok", keterampilan="cocok", pendidikan="tidak cocok")) == "SKIP"
+    """pendidikan satu-satunya keras mutlak; SKIP diperiksa sebelum skor, jadi skor
+    setinggi apa pun tidak menyelamatkan."""
+    syarat = _syarat(peran="cocok", keterampilan="cocok", pendidikan="tidak cocok")
+    assert _vonis_akhir(syarat, 100) == "SKIP"
 
 
 def test_vonis_akhir_pertimbangkan_kalau_keras_bersyarat_gagal():
-    assert _vonis_akhir(_syarat(peran="cocok", keterampilan="cocok", lokasi="tidak cocok")) == "PERTIMBANGKAN"
+    """lokasi tidak cocok menahan di PERTIMBANGKAN walau skor lolos ambang."""
+    syarat = _syarat(peran="cocok", keterampilan="cocok", lokasi="tidak cocok")
+    assert _vonis_akhir(syarat, AMBANG_LAMAR) == "PERTIMBANGKAN"
 
 
 def test_cocok_tanpa_bukti_diturunkan_jadi_tidak_kebaca():
