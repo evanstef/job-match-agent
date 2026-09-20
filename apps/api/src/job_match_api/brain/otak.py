@@ -20,6 +20,11 @@ VonisAkhir = Literal["LAMAR", "PERTIMBANGKAN", "SKIP"]
 
 BOBOT = {"cocok": 1.0, "tidak kebaca": 0.4, "tidak cocok": 0.0}
 POTONGAN_KERAS_BERSYARAT = 25
+# LAMAR kalau skor >= ini, di bawahnya PERTIMBANGKAN. Vonis dulu cuma mencacah "cocok"
+# per dimensi lunak -> junior tembus posisi senior (senioritas lunak, diabaikan). Sekarang
+# ikut skor yang sudah menimbang cakupan (senioritas 0/1 dst), jadi cocok-tapi-dangkal
+# tidak lagi otomatis LAMAR.
+AMBANG_LAMAR = 55
 JARAK_PERAN_MAKS = 0.46
 # syarat semu, menahan lowongan bersyarat sedikit agar tidak langsung menang
 BUKTI_SEMU = 2
@@ -296,16 +301,13 @@ def _gagal_keras_mutlak(syarat: list[Syarat]) -> bool:
     return any(s.sifat == "keras mutlak" and s.vonis == "tidak cocok" for s in syarat)
 
 
-def _vonis_akhir(syarat: list[Syarat]) -> VonisAkhir:
+def _vonis_akhir(syarat: list[Syarat], skor: int) -> VonisAkhir:
     if _gagal_keras_mutlak(syarat):
         return "SKIP"
     if any(s.sifat == "keras bersyarat" and s.vonis == "tidak cocok" for s in syarat):
         return "PERTIMBANGKAN"
 
-    lunak = [s for s in syarat if s.sifat == "lunak"]
-    if lunak and sum(s.vonis == "cocok" for s in lunak) * 2 > len(lunak):
-        return "LAMAR"
-    return "PERTIMBANGKAN"
+    return "LAMAR" if skor >= AMBANG_LAMAR else "PERTIMBANGKAN"
 
 
 def _bobot_satu(s: Syarat) -> float:
@@ -716,9 +718,10 @@ def nilai(
             s.vonis = _vonis_pendidikan(pendidikan, low, iklan)
             s.bukti = f"Pendidikan di CV: {pendidikan}" if s.vonis == "cocok" else None
 
+    skor = _skor(syarat)
     return Hasil(
-        vonis=_vonis_akhir(syarat),
-        skor=_skor(syarat),
+        vonis=_vonis_akhir(syarat, skor),
+        skor=skor,
         ringkasan=_ringkasan(syarat),
         syarat=syarat,
         detail_terbaca=_ada_iklan_penuh(iklan),

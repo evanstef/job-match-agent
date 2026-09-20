@@ -24,7 +24,7 @@ PREFERENSI_DEFAULT = Preferensi(lokasi=["Jakarta", "Tangerang"], mau_remote=True
 # Lantai, bukan tebing. Satu lowongan yang sama dinilai 5x menghasilkan 45/45/45/70/70
 # (17 Agu) dan 36/76/36/56/56 (19 Agu) — ambang di dalam pita itu jadi undian.
 # Yang menyeleksi urutan skor + MAKS_KIRIM; lantai cuma menahan waktu tak ada yang bagus.
-AMBANG_SKOR = 35
+AMBANG_SKOR = 45
 MAKS_KIRIM = 10
 JEDA_DETIK = 10
 
