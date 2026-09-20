@@ -25,6 +25,10 @@ const WARNA_VONIS: Record<string, string> = {
 const KARTU =
   "rounded-2xl border border-zinc-200/70 bg-white/80 p-5 backdrop-blur dark:border-zinc-800 dark:bg-zinc-900/70";
 
+// Tombol "Jalankan sekarang" manual di-hide: tiap klik makan token + kirim WA + konsumsi
+// kandidat. Set true kalau mau munculkan lagi. Putaran otomatis 09.00 WIB tak terpengaruh.
+const TAMPILKAN_JALANKAN_MANUAL = false;
+
 export default function Beranda() {
   const router = useRouter();
   const [saya, setSaya] = useState<SayaOut | null>(null);
@@ -143,27 +147,28 @@ export default function Beranda() {
             <h2 className="font-medium">Jalan otomatis tiap hari</h2>
           </div>
           <p className="mt-1.5 text-sm font-light text-zinc-600 dark:text-zinc-400">
-            Jam 09.00 WIB. Kamu bisa memicunya sekarang untuk
-            melihat hasilnya.
+            Jam 09.00 WIB. Kalau ada yang cocok, langsung dikirim ke WhatsApp.
           </p>
 
-          <motion.button
-            type="button"
-            onClick={jalankan}
-            disabled={sibuk}
-            whileHover={{ scale: sibuk ? 1 : 1.02 }}
-            whileTap={{ scale: sibuk ? 1 : 0.98 }}
-            className="mt-4 flex items-center gap-2.5 rounded-xl bg-zinc-900 px-5 py-2.5 font-medium text-white shadow-lg shadow-zinc-900/10 transition-colors hover:bg-zinc-700 disabled:opacity-50 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white"
-          >
-            {sibuk && (
-              <motion.span
-                animate={{ rotate: 360 }}
-                transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                className="h-4 w-4 rounded-full border-2 border-zinc-400 border-t-transparent"
-              />
-            )}
-            {sibuk ? "Menilai lowongan..." : "Jalankan sekarang"}
-          </motion.button>
+          {TAMPILKAN_JALANKAN_MANUAL && (
+            <motion.button
+              type="button"
+              onClick={jalankan}
+              disabled={sibuk}
+              whileHover={{ scale: sibuk ? 1 : 1.02 }}
+              whileTap={{ scale: sibuk ? 1 : 0.98 }}
+              className="mt-4 flex items-center gap-2.5 rounded-xl bg-zinc-900 px-5 py-2.5 font-medium text-white shadow-lg shadow-zinc-900/10 transition-colors hover:bg-zinc-700 disabled:opacity-50 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white"
+            >
+              {sibuk && (
+                <motion.span
+                  animate={{ rotate: 360 }}
+                  transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                  className="h-4 w-4 rounded-full border-2 border-zinc-400 border-t-transparent"
+                />
+              )}
+              {sibuk ? "Menilai lowongan..." : "Jalankan sekarang"}
+            </motion.button>
+          )}
         </motion.section>
 
         <AnimatePresence mode="wait">
