@@ -47,9 +47,7 @@ pasang_error_handler(app)
 app.include_router(auth.router)
 app.include_router(saya.router)
 
-# API route untuk semua endpoint yang berhubungan dengan lowongan
-app.include_router(lowongan.router)
-# impor-sample cuma untuk pengembangan — jangan expose di produksi
+# impor-sample lowongan: dev-only, jangan expose di produksi
 if settings.app_env != "production":
     app.include_router(lowongan.router_dev)
 
