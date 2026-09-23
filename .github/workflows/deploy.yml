@@ -29,8 +29,66 @@ jobs:
           JWT_SECRET: test
         run: uv run pytest
 
+  # gerbang kualitas penilai: lawan golden set, gagal = deploy diblokir.
+  # Cuma saat push (PR tak bisa memblokir merge — master tak diproteksi) dan cuma
+  # kalau otak berubah, karena satu run makan ~52rb token kuota Groq eval.
+  eval:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    defaults:
+      run:
+        working-directory: apps/api
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Cek otak penilai berubah
+        id: cek
+        # diff gagal (mis. push pertama) = anggap berubah, lebih baik eval daripada lolos buta
+        run: |
+          if git diff --quiet ${{ github.event.before }} ${{ github.sha }} -- \
+              src/job_match_api/brain src/job_match_api/pipeline.py \
+              src/job_match_api/config.py ops/eval_penilai.py 2>/dev/null; then
+            echo "otak=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "otak=true" >> "$GITHUB_OUTPUT"
+          fi
+      - if: steps.cek.outputs.otak == 'true'
+        uses: astral-sh/setup-uv@v5
+      - if: steps.cek.outputs.otak == 'true'
+        run: uv sync --frozen
+      - if: steps.cek.outputs.otak == 'true'
+        uses: actions/cache@v4
+        with:
+          path: apps/api/.model-cache
+          key: fastembed-${{ hashFiles('apps/api/src/job_match_api/vektor.py') }}
+      - name: Tulis data eval dari secret
+        if: steps.cek.outputs.otak == 'true'
+        env:
+          GOLDEN: ${{ secrets.EVAL_GOLDEN_SET }}
+          SYARAT: ${{ secrets.EVAL_GOLDEN_SYARAT }}
+          CV: ${{ secrets.EVAL_CV_JSON }}
+        run: |
+          printf '%s' "$GOLDEN" > "$RUNNER_TEMP/golden.json"
+          printf '%s' "$SYARAT" > "$RUNNER_TEMP/syarat.json"
+          printf '%s' "$CV" > "$RUNNER_TEMP/cv.json"
+      - name: Eval penilai
+        if: steps.cek.outputs.otak == 'true'
+        env:
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY_EVAL }}
+          DATABASE_URL: postgresql+psycopg://t:t@localhost:5432/t
+          JWT_SECRET: test
+        # exit 1 = kualitas turun, exit 2 = ada lowongan gagal dinilai (429) -> re-run job
+        run: >-
+          uv run python ops/eval_penilai.py --ulangan 1
+          --hanya 7856,7857,7858,7859,7860,7861,7862,7863,7864,7884,7885,7891,7869
+          --golden "$RUNNER_TEMP/golden.json" --syarat "$RUNNER_TEMP/syarat.json"
+          --cv-json "$RUNNER_TEMP/cv.json"
+          --min-vonis 7 --min-korelasi 0.35 --wajib-kirim
+
   build-push:
-    needs: test
+    needs: [test, eval]
     if: github.event_name == 'push'
     runs-on: ubuntu-latest
     steps:
