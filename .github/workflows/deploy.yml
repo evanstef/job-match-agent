@@ -33,7 +33,9 @@ jobs:
   # Cuma saat push (PR tak bisa memblokir merge — master tak diproteksi) dan cuma
   # kalau otak berubah, karena satu run makan ~52rb token kuota Groq eval.
   eval:
-    if: github.event_name == 'push'
+    # DIMATIKAN 2026-09-23: ~8 menit per deploy. Nyalakan lagi: hapus `false &&`
+    # di sini DAN kembalikan `eval` ke needs build-push.
+    if: false && github.event_name == 'push'
     runs-on: ubuntu-latest
     timeout-minutes: 25
     defaults:
@@ -88,7 +90,7 @@ jobs:
           --min-vonis 7 --min-korelasi 0.35 --wajib-kirim
 
   build-push:
-    needs: [test, eval]
+    needs: test
     if: github.event_name == 'push'
     runs-on: ubuntu-latest
     steps:
