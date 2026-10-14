@@ -12,6 +12,7 @@ from pydantic import (
 )
 
 from job_match_api.config import settings
+from job_match_api.metrik import catat_token
 
 MAKS_SKILL = 25
 MAKS_PERAN = 6
@@ -144,6 +145,7 @@ def ekstrak_profil(teks: str) -> ProfilCv:
             response_format={"type": "json_object"},
             temperature=0,
         )
+        catat_token(respons)
         isi = respons.choices[0].message.content or ""
     except GroqError as e:
         raise ProfilError(f"Gagal menghubungi Groq: {type(e).__name__}") from e

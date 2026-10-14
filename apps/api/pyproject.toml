@@ -38,6 +38,9 @@ dependencies = [
 
     # penjadwalan
     "apscheduler>=3.11",
+
+    # metrik aplikasi, diambil Grafana Alloy dari port terpisah
+    "prometheus-client>=0.21",
 ]
 
 [dependency-groups]
