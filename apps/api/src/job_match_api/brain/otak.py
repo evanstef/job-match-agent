@@ -10,6 +10,7 @@ from pydantic import BaseModel, ValidationError, model_validator
 from job_match_api.config import settings
 from job_match_api.cv.profil import JENJANG_ALIAS, Jenjang
 from job_match_api.db.models import Lowongan
+from job_match_api.metrik import catat_token
 from job_match_api.teks import bersihkan
 from job_match_api.vektor import VektorError, dari_teks
 
@@ -509,6 +510,7 @@ def _tanya(
             temperature=0,
             max_tokens=MAKS_TOKEN_JAWABAN,
         )
+        catat_token(respons)
         isi = respons.choices[0].message.content or ""
     except GroqError as e:
         raise OtakError(f"Gagal menghubungi Groq: {type(e).__name__}") from e
@@ -547,6 +549,7 @@ def ekstrak_syarat(low: Lowongan, iklan: str | None = None) -> list[SyaratDimint
             temperature=0,
             max_tokens=MAKS_TOKEN_JAWABAN,
         )
+        catat_token(respons)
         isi_jawab = respons.choices[0].message.content or ""
     except GroqError as e:
         raise OtakError(f"Gagal menghubungi Groq: {type(e).__name__}") from e
@@ -595,6 +598,7 @@ def _tanya_eval(
             temperature=0,
             max_tokens=MAKS_TOKEN_JAWABAN,
         )
+        catat_token(respons)
         isi = respons.choices[0].message.content or ""
     except GroqError as e:
         raise OtakError(f"Gagal menghubungi Groq: {type(e).__name__}") from e

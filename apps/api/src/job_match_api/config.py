@@ -35,6 +35,9 @@ class Settings(BaseSettings):
     # mati secara default supaya menjalankan API di laptop tidak ikut mengirim pesan
     penjadwal_aktif: bool = False
 
+    # port /metrics untuk Alloy, sengaja bukan 8010 (yang itu diteruskan Caddy ke publik). 0 = mati
+    metrik_port: int = 9464
+
     # Jam putaran harian, dipisah koma ("9" atau "9,13"). Zona Asia/Jakarta,
     # dipatok di penjadwal — server jalan di UTC, "9" polos berarti 16.00 WIB.
     jam_putaran: str = "9"

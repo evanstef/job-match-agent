@@ -4,6 +4,7 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 from sqlalchemy.orm import Session
 
+from job_match_api import metrik
 from job_match_api.config import settings
 from job_match_api.db.repository import ambil_user_siap
 from job_match_api.db.session import SessionLocal
@@ -31,6 +32,7 @@ def _isi_kolam(db: Session) -> None:
     """Dua langkah pengisi bahan sebelum penilaian: tarik dari scraper, hitung vektor."""
     try:
         hasil = tarik_scraper(db)
+        metrik.LOWONGAN_DITARIK.inc(hasil.baru)
         logger.info(
             "Tarik scraper: %s dibaca, %s baru (%s)",
             hasil.dibaca,

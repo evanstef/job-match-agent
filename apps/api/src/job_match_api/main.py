@@ -5,7 +5,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from job_match_api import penjadwal
+from job_match_api import metrik, penjadwal
 from job_match_api.api import auth, cv, lowongan, pencocokan, preferensi, saya
 from job_match_api.api.errors import pasang_error_handler
 from job_match_api.config import settings
@@ -20,9 +20,11 @@ logging.basicConfig(
 
 @asynccontextmanager
 async def daur_hidup(_app: FastAPI) -> AsyncIterator[None]:
+    metrik.nyalakan(settings.metrik_port)
     penjadwal.mulai()
     yield
     penjadwal.berhenti()
+    metrik.matikan()
 
 
 app = FastAPI(

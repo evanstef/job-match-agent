@@ -4,6 +4,7 @@ import time
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
+from job_match_api import metrik
 from job_match_api.brain.otak import Hasil, OtakError, Preferensi, ekstrak_syarat, nilai
 from job_match_api.brain.saring import saring_kasar
 from job_match_api.cv.profil import ProfilCv
@@ -132,9 +133,11 @@ def jalankan(db: Session, user_id: int, maks_dinilai: int = 10) -> HasilJalan:
                 cv.teks_mentah, pref, low, low.isi_lengkap, profil.peran, profil.pendidikan
             )
             dinilai.append((low, hasil))
+            metrik.PENILAIAN.labels(hasil="berhasil").inc()
         except OtakError as e:
             # satu lowongan gagal tidak boleh mematikan seluruh putaran
             gagal += 1
+            metrik.PENILAIAN.labels(hasil="gagal").inc()
             logger.warning("Lowongan %s gagal dinilai: %s", low.id, e)
 
     # semua yang dinilai dicatat, bukan cuma yang dikirim — supaya tidak dinilai ulang besok

@@ -2,6 +2,7 @@ import logging
 
 from sqlalchemy.orm import Session
 
+from job_match_api import metrik
 from job_match_api.config import settings
 from job_match_api.db.models import User
 from job_match_api.db.repository import tandai_terkirim
@@ -33,6 +34,9 @@ def jalankan_dan_kirim(db: Session, user_id: int, maks_dinilai: int = 10) -> Has
             )
         except KurirError as e:
             logger.warning("Gagal mengirim kabar kosong: %s", e)
+            metrik.catat_pesan("kabar_kosong", terkirim=False)
+        else:
+            metrik.catat_pesan("kabar_kosong", terkirim=True)
         return hasil
 
     try:
@@ -40,7 +44,9 @@ def jalankan_dan_kirim(db: Session, user_id: int, maks_dinilai: int = 10) -> Has
     except KurirError as e:
         # penilaiannya sudah tercatat; yang gagal cuma pengirimannya, jadi bisa dicoba lagi nanti
         logger.warning("Gagal mengirim %s lowongan: %s", len(hasil.terpilih), e)
+        metrik.catat_pesan("lowongan", terkirim=False)
         return hasil
 
+    metrik.catat_pesan("lowongan", terkirim=True)
     tandai_terkirim(db, user_id, [low.id for low in hasil.terpilih])
     return hasil
